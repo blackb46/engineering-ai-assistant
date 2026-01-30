@@ -13,30 +13,148 @@ st.set_page_config(page_title="Q&A Mode", page_icon="💬", layout="wide")
 # CSS styling for professional appearance
 st.markdown("""
 <style>
-    .question-box {
+    .answer-box {
+        background: linear-gradient(135deg, #e8f4f8 0%, #d1ecf1 100%);
+        border: 2px solid #17a2b8;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    .answer-label {
+        color: #0c5460;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+    .answer-text {
+        color: #0c5460;
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+    .details-box {
         background: #f8f9fa;
         border: 1px solid #dee2e6;
+        border-left: 4px solid #6c757d;
         border-radius: 8px;
-        padding: 1rem;
+        padding: 1.2rem;
         margin: 1rem 0;
     }
-    .answer-box {
-        background: #e7f3ff;
-        border: 1px solid #bee5eb;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
+    .details-label {
+        color: #495057;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.75rem;
+    }
+    .details-text {
+        color: #212529;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+    .code-ref {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #856404;
     }
     .source-box {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
         border-radius: 8px;
-        padding: 0.5rem;
+        padding: 0.75rem;
         margin: 0.5rem 0;
         font-size: 0.9em;
     }
 </style>
 """, unsafe_allow_html=True)
+
+
+def parse_response(response_text):
+    """Parse the structured response into components"""
+    result = {
+        'answer': '',
+        'details': '',
+        'code_reference': '',
+        'sources': ''
+    }
+    
+    # Split by known headers
+    text = response_text.strip()
+    
+    # Extract ANSWER section
+    if 'ANSWER:' in text:
+        answer_start = text.find('ANSWER:') + len('ANSWER:')
+        answer_end = text.find('DETAILS:') if 'DETAILS:' in text else len(text)
+        result['answer'] = text[answer_start:answer_end].strip()
+    
+    # Extract DETAILS section
+    if 'DETAILS:' in text:
+        details_start = text.find('DETAILS:') + len('DETAILS:')
+        details_end = text.find('CODE REFERENCE:') if 'CODE REFERENCE:' in text else text.find('SOURCES:') if 'SOURCES:' in text else len(text)
+        result['details'] = text[details_start:details_end].strip()
+    
+    # Extract CODE REFERENCE section
+    if 'CODE REFERENCE:' in text:
+        code_start = text.find('CODE REFERENCE:') + len('CODE REFERENCE:')
+        code_end = text.find('SOURCES:') if 'SOURCES:' in text else len(text)
+        result['code_reference'] = text[code_start:code_end].strip()
+    
+    # Extract SOURCES section (we won't display this, but parse it anyway)
+    if 'SOURCES:' in text:
+        sources_start = text.find('SOURCES:') + len('SOURCES:')
+        result['sources'] = text[sources_start:].strip()
+    
+    return result
+
+
+def display_formatted_answer(response_text):
+    """Display the answer in a nicely formatted way"""
+    parsed = parse_response(response_text)
+    
+    # Display ANSWER box
+    if parsed['answer']:
+        st.markdown(f"""
+        <div class="answer-box">
+            <div class="answer-label">📋 Answer</div>
+            <div class="answer-text">{parsed['answer']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Display DETAILS and CODE REFERENCE box
+    if parsed['details'] or parsed['code_reference']:
+        details_html = ""
+        if parsed['details']:
+            # Convert bullet points to HTML list
+            details_lines = parsed['details'].split('\n')
+            details_formatted = ""
+            for line in details_lines:
+                line = line.strip()
+                if line.startswith('- ') or line.startswith('* '):
+                    details_formatted += f"<li>{line[2:]}</li>"
+                elif line:
+                    details_formatted += f"<li>{line}</li>"
+            if details_formatted:
+                details_html = f"<ul style='margin: 0; padding-left: 1.5rem;'>{details_formatted}</ul>"
+        
+        code_ref_html = ""
+        if parsed['code_reference'] and parsed['code_reference'].lower() not in ['n/a', 'see sources below', '']:
+            code_ref_html = f"""<div class="code-ref"><strong>📖 Code Reference:</strong> {parsed['code_reference']}</div>"""
+        
+        st.markdown(f"""
+        <div class="details-box">
+            <div class="details-label">📝 Supporting Details</div>
+            <div class="details-text">{details_html}</div>
+            {code_ref_html}
+        </div>
+        """, unsafe_allow_html=True)
+
 
 def main():
     """Main function for the Q&A Mode page"""
@@ -100,13 +218,15 @@ def main():
                         model_used=result.get('model_used', 'unknown')
                     )
                     
-                    # Display results
+                    # Display formatted results
                     st.markdown("### 📝 Answer")
-                    st.markdown(f"""
-                    <div class="answer-box">
-                        {result.get('answer', 'No answer generated')}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    
+                    if result.get('chunks_used', 0) > 0:
+                        # Display the nicely formatted answer
+                        display_formatted_answer(result.get('answer', 'No answer generated'))
+                    else:
+                        # No sources found - display abstention message
+                        st.warning(result.get('answer', 'No relevant information found.'))
                     
                     # Display sources
                     if result.get('sources'):
@@ -179,13 +299,13 @@ def main():
         """)
         
         # Recent queries
-        st.subheader("📝 Recent Queries")
+        st.subheader("🔍 Recent Queries")
         try:
             recent_queries = st.session_state.audit_logger.get_recent_queries(limit=5)
             
             if recent_queries:
                 for query in recent_queries:
-                    with st.expander(f"🔍 {query['question'][:50]}..."):
+                    with st.expander(f"🔎 {query['question'][:50]}..."):
                         st.write(f"**Asked:** {query['timestamp']}")
                         st.write(f"**Sources:** {query['sources_count']}")
                         st.write(f"**Flagged:** {'Yes' if query.get('flagged') else 'No'}")
