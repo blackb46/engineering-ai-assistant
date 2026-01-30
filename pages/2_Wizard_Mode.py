@@ -75,7 +75,7 @@ def main():
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("🏠 Home"):
-            st.switch_page("Dashboard.py")
+            st.switch_page("app.py")
     with col2:
         if st.button("💬 Try Q&A Mode"):
             st.switch_page("pages/1_QA_Mode.py") 
