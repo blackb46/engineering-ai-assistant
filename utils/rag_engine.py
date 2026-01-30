@@ -169,12 +169,23 @@ CONTEXT FROM ENGINEERING MANUAL:
 QUESTION: {question}
 
 INSTRUCTIONS:
-1. Answer the question using ONLY the information provided in the context above
-2. If the context doesn't contain enough information to fully answer the question, clearly state what's missing
-3. Cite your sources by referencing [SOURCE X] numbers in your response
-4. Be specific and detailed when the context provides sufficient information
-5. Focus on practical, actionable guidance for engineers and developers
-6. If you cannot answer based on the provided context, say so clearly
+Answer using ONLY the information provided in the context above. Use this EXACT format:
+
+**DIRECT ANSWER:**
+[Provide the specific answer in 1-2 sentences. Include key numbers, measurements, or requirements. Be definitive.]
+
+**SUPPORTING DETAILS:**
+[Provide additional relevant details, related requirements, or practical guidance from the sources. Use bullet points for clarity.]
+
+**SOURCES:**
+[List which SOURCE numbers support the answer]
+
+FORMATTING RULES:
+1. Always start with the direct answer - no preamble or introductory phrases
+2. If the answer is a number or measurement, state it immediately (e.g., "20 percent" not "The maximum is 20 percent")
+3. If multiple related requirements exist, include them in Supporting Details
+4. If the context doesn't contain the answer, state: "The Engineering Manual does not contain information to answer this question."
+5. Never invent information not found in the sources
 
 ANSWER:"""
 
