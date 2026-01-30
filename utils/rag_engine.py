@@ -38,16 +38,16 @@ class RAGEngine:
             try:
                 collection = self.client.get_collection(collection_name)
                 self.collections[chunk_type] = collection
-                print(f"✅ Loaded {chunk_type} collection with {collection.count()} chunks")
+                print(f"Loaded {chunk_type} collection with {collection.count()} chunks")
             except:
-                print(f"⚠️ {chunk_type} collection not found")
+                print(f"{chunk_type} collection not found")
         
         # Fallback to single collection if multi-resolution not found
         if not self.collections:
             try:
                 collection = self.client.get_collection("engineering_manual")
                 self.collections['medium'] = collection
-                print(f"✅ Loaded single collection with {collection.count()} chunks")
+                print(f"Loaded single collection with {collection.count()} chunks")
             except:
                 raise Exception("No vector collections found")
         
@@ -62,7 +62,7 @@ class RAGEngine:
             raise Exception(f"Claude API setup failed: {e}")
         
         self.is_initialized = True
-        print("✅ RAG Engine initialized successfully")
+        print("RAG Engine initialized successfully")
     
     def is_ready(self):
         """Check if the RAG engine is ready"""
@@ -168,7 +168,7 @@ CONTEXT FROM ENGINEERING MANUAL:
 
 QUESTION: {question}
 
-You MUST respond using EXACTLY this format with these EXACT headers (copy them exactly):
+You MUST respond using EXACTLY this format with these EXACT headers:
 
 ANSWER: [State the direct answer in one sentence with specific numbers/requirements]
 
@@ -177,17 +177,17 @@ DETAILS:
 - [Second supporting detail if applicable]
 - [Additional details as needed]
 
-CODE REFERENCE: [Section number if mentioned in sources, or "See sources below"]
+CODE REFERENCE: [Section number if mentioned in sources, or N/A]
 
 SOURCES: [SOURCE X, SOURCE Y]
 
 RULES:
-- Start with "ANSWER:" immediately - no other text before it
+- Start with ANSWER: immediately - no other text before it
 - Keep the ANSWER line to 1-2 sentences maximum
-- Use simple bullet points with "-" for DETAILS
+- Use simple bullet points with - for DETAILS
 - Do not use markdown formatting like ** or ## or ###
 - Do not add any headers other than ANSWER:, DETAILS:, CODE REFERENCE:, and SOURCES:
-- If information is not in the context, say "ANSWER: The Engineering Manual does not contain this information."
+- If information is not in the context, say: ANSWER: The Engineering Manual does not contain this information.
 
 Respond now:"""
 
@@ -203,32 +203,3 @@ Respond now:"""
             
         except Exception as e:
             return f"Error generating answer: {str(e)}"
-```
-
----
-
-## 🔑 Key Changes Made
-
-| Change | Why |
-|--------|-----|
-| Removed `**` markdown formatting from prompt | Stops the huge bold headers |
-| Changed to simple text headers (`ANSWER:`, `DETAILS:`) | Consistent, predictable format |
-| Set `temperature=0.0` | More deterministic responses |
-| Added explicit "no markdown" rule | Prevents `##`, `**`, `###` formatting |
-| Provided exact header names to copy | Forces consistent structure |
-| Simplified bullet format to `-` | Cleaner, uniform appearance |
-
----
-
-## 🎯 Expected New Output
-```
-ANSWER: 25% of the total lot area is the maximum building coverage permitted on residential lots.
-
-DETAILS:
-- Building coverage includes primary dwelling, accessory buildings, porches/decks with roofs, garages, and carports
-- Example: 20,000 sq ft lot × 0.25 = 5,000 sq ft maximum coverage
-- Calculations must be shown on site plans
-
-CODE REFERENCE: See sources below
-
-SOURCES: [SOURCE 1, SOURCE 3, SOURCE 5]
