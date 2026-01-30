@@ -161,39 +161,41 @@ class RAGEngine:
         
         full_context = "\n\n".join(context_parts)
         
-        prompt = f"""You are an expert assistant helping with engineering policy questions for a municipal engineering department.
+        prompt = f"""You are an expert assistant for a municipal engineering department. Answer questions using ONLY the provided context.
 
 CONTEXT FROM ENGINEERING MANUAL:
 {full_context}
 
 QUESTION: {question}
 
-INSTRUCTIONS:
-Answer using ONLY the information provided in the context above. Use this EXACT format:
+You MUST respond using EXACTLY this format with these EXACT headers (copy them exactly):
 
-**DIRECT ANSWER:**
-[Provide the specific answer in 1-2 sentences. Include key numbers, measurements, or requirements. Be definitive.]
+ANSWER: [State the direct answer in one sentence with specific numbers/requirements]
 
-**SUPPORTING DETAILS:**
-[Provide additional relevant details, related requirements, or practical guidance from the sources. Use bullet points for clarity.]
+DETAILS:
+- [First supporting detail or related requirement]
+- [Second supporting detail if applicable]
+- [Additional details as needed]
 
-**SOURCES:**
-[List which SOURCE numbers support the answer]
+CODE REFERENCE: [Section number if mentioned in sources, or "See sources below"]
 
-FORMATTING RULES:
-1. Always start with the direct answer - no preamble or introductory phrases
-2. If the answer is a number or measurement, state it immediately (e.g., "20 percent" not "The maximum is 20 percent")
-3. If multiple related requirements exist, include them in Supporting Details
-4. If the context doesn't contain the answer, state: "The Engineering Manual does not contain information to answer this question."
-5. Never invent information not found in the sources
+SOURCES: [SOURCE X, SOURCE Y]
 
-ANSWER:"""
+RULES:
+- Start with "ANSWER:" immediately - no other text before it
+- Keep the ANSWER line to 1-2 sentences maximum
+- Use simple bullet points with "-" for DETAILS
+- Do not use markdown formatting like ** or ## or ###
+- Do not add any headers other than ANSWER:, DETAILS:, CODE REFERENCE:, and SOURCES:
+- If information is not in the context, say "ANSWER: The Engineering Manual does not contain this information."
+
+Respond now:"""
 
         try:
             response = self.claude_client.messages.create(
                 model="claude-sonnet-4-5-20250929",
                 max_tokens=1000,
-                temperature=0.1,
+                temperature=0.0,
                 messages=[{"role": "user", "content": prompt}]
             )
             
@@ -201,3 +203,32 @@ ANSWER:"""
             
         except Exception as e:
             return f"Error generating answer: {str(e)}"
+```
+
+---
+
+## 🔑 Key Changes Made
+
+| Change | Why |
+|--------|-----|
+| Removed `**` markdown formatting from prompt | Stops the huge bold headers |
+| Changed to simple text headers (`ANSWER:`, `DETAILS:`) | Consistent, predictable format |
+| Set `temperature=0.0` | More deterministic responses |
+| Added explicit "no markdown" rule | Prevents `##`, `**`, `###` formatting |
+| Provided exact header names to copy | Forces consistent structure |
+| Simplified bullet format to `-` | Cleaner, uniform appearance |
+
+---
+
+## 🎯 Expected New Output
+```
+ANSWER: 25% of the total lot area is the maximum building coverage permitted on residential lots.
+
+DETAILS:
+- Building coverage includes primary dwelling, accessory buildings, porches/decks with roofs, garages, and carports
+- Example: 20,000 sq ft lot × 0.25 = 5,000 sq ft maximum coverage
+- Calculations must be shown on site plans
+
+CODE REFERENCE: See sources below
+
+SOURCES: [SOURCE 1, SOURCE 3, SOURCE 5]
