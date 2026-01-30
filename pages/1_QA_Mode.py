@@ -10,9 +10,14 @@ from database import AuditLogger
 
 st.set_page_config(page_title="Q&A Mode", page_icon="💬", layout="wide")
 
-# CSS styling for professional appearance
+# Hide default navigation and add custom styling
 st.markdown("""
 <style>
+    /* Hide default streamlit page navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+    
     .answer-box {
         background: linear-gradient(135deg, #e8f4f8 0%, #d1ecf1 100%);
         border: 2px solid #17a2b8;
@@ -75,6 +80,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Custom Sidebar Navigation
+st.sidebar.title("🏗️ Navigation")
+st.sidebar.markdown("---")
+st.sidebar.page_link("app.py", label="🏠 Dashboard")
+st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode")
+st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode")
+st.sidebar.page_link("pages/3_Admin.py", label="⚙️ Admin Panel")
+st.sidebar.markdown("---")
+
 
 def parse_response(response_text):
     """Parse the structured response into components"""
@@ -85,28 +99,23 @@ def parse_response(response_text):
         'sources': ''
     }
     
-    # Split by known headers
     text = response_text.strip()
     
-    # Extract ANSWER section
     if 'ANSWER:' in text:
         answer_start = text.find('ANSWER:') + len('ANSWER:')
         answer_end = text.find('DETAILS:') if 'DETAILS:' in text else len(text)
         result['answer'] = text[answer_start:answer_end].strip()
     
-    # Extract DETAILS section
     if 'DETAILS:' in text:
         details_start = text.find('DETAILS:') + len('DETAILS:')
         details_end = text.find('CODE REFERENCE:') if 'CODE REFERENCE:' in text else text.find('SOURCES:') if 'SOURCES:' in text else len(text)
         result['details'] = text[details_start:details_end].strip()
     
-    # Extract CODE REFERENCE section
     if 'CODE REFERENCE:' in text:
         code_start = text.find('CODE REFERENCE:') + len('CODE REFERENCE:')
         code_end = text.find('SOURCES:') if 'SOURCES:' in text else len(text)
         result['code_reference'] = text[code_start:code_end].strip()
     
-    # Extract SOURCES section (we won't display this, but parse it anyway)
     if 'SOURCES:' in text:
         sources_start = text.find('SOURCES:') + len('SOURCES:')
         result['sources'] = text[sources_start:].strip()
@@ -118,7 +127,6 @@ def display_formatted_answer(response_text):
     """Display the answer in a nicely formatted way"""
     parsed = parse_response(response_text)
     
-    # Display ANSWER box
     if parsed['answer']:
         st.markdown(f"""
         <div class="answer-box">
@@ -127,11 +135,9 @@ def display_formatted_answer(response_text):
         </div>
         """, unsafe_allow_html=True)
     
-    # Display DETAILS and CODE REFERENCE box
     if parsed['details'] or parsed['code_reference']:
         details_html = ""
         if parsed['details']:
-            # Convert bullet points to HTML list
             details_lines = parsed['details'].split('\n')
             details_formatted = ""
             for line in details_lines:
@@ -161,37 +167,26 @@ def main():
     st.title("💬 Engineering Q&A Mode")
     st.markdown("Ask questions about engineering policies and get accurate, cited answers.")
     
-    # Initialize components
     if 'rag_engine' not in st.session_state:
         st.session_state.rag_engine = RAGEngine()
     
     if 'audit_logger' not in st.session_state:
         st.session_state.audit_logger = AuditLogger()
     
-    # Check system readiness
     if not st.session_state.rag_engine.is_ready():
-        st.error("❌ System not ready. Please check:")
-        st.markdown("""
-        - Vector database exists in `vectorstore/` folder
-        - Claude API key is configured in secrets
-        - Manual file exists in `data/` folder
-        """)
-        if st.button("🏠 Return to Home"):
-            st.switch_page("app.py")
+        st.error("❌ System not ready. Please check configuration.")
         return
     
     st.success("✅ Q&A system is ready!")
     
-    # Main interface
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        # Question input
         st.subheader("❓ Ask Your Question")
         question = st.text_area(
             "Enter your engineering policy question:",
             height=100,
-            placeholder="e.g., What are the minimum pipe sizes for drainage systems?"
+            placeholder="e.g., What are the maximum slopes for driveways?"
         )
         
         col1a, col1b = st.columns([1, 1])
@@ -203,13 +198,11 @@ def main():
         if clear_button:
             st.rerun()
         
-        # Process question
         if ask_button and question.strip():
             with st.spinner("Searching through engineering manual..."):
                 try:
                     result = st.session_state.rag_engine.query(question)
                     
-                    # Log the query
                     st.session_state.audit_logger.log_query(
                         question=question,
                         answer=result.get('answer', ''),
@@ -218,17 +211,11 @@ def main():
                         model_used=result.get('model_used', 'unknown')
                     )
                     
-                    # Display formatted results
-                    st.markdown("### 📝 Answer")
-                    
                     if result.get('chunks_used', 0) > 0:
-                        # Display the nicely formatted answer
                         display_formatted_answer(result.get('answer', 'No answer generated'))
                     else:
-                        # No sources found - display abstention message
                         st.warning(result.get('answer', 'No relevant information found.'))
                     
-                    # Display sources
                     if result.get('sources'):
                         st.markdown("### 📚 Sources")
                         for i, source in enumerate(result['sources'], 1):
@@ -240,92 +227,58 @@ def main():
                             </div>
                             """, unsafe_allow_html=True)
                     
-                    # Performance metrics
                     st.markdown("### 📊 Query Statistics")
-                    col1a, col1b, col1c = st.columns(3)
+                    col1a, col1b = st.columns(2)
                     with col1a:
                         st.metric("Chunks Used", result.get('chunks_used', 0))
                     with col1b:
                         st.metric("Sources Found", len(result.get('sources', [])))
-                    with col1c:
-                        if 'token_usage' in result:
-                            total_tokens = result['token_usage']['input_tokens'] + result['token_usage']['output_tokens']
-                            st.metric("Tokens Used", f"{total_tokens:,}")
                     
-                    # Feedback section
                     st.markdown("### 📢 Feedback")
                     col1a, col1b = st.columns(2)
-                    
                     with col1a:
-                        if st.button("👍 This answer is helpful"):
+                        if st.button("👍 Helpful"):
                             st.session_state.audit_logger.flag_response(
-                                question=question,
-                                flag_type="positive",
-                                reason="User marked as helpful"
+                                question=question, flag_type="positive", reason="Helpful"
                             )
-                            st.success("Thank you for your feedback!")
-                    
+                            st.success("Thanks for your feedback!")
                     with col1b:
-                        if st.button("👎 This answer needs improvement"):
+                        if st.button("👎 Needs Improvement"):
                             st.session_state.audit_logger.flag_response(
-                                question=question,
-                                flag_type="negative",
-                                reason="User marked as needing improvement"
+                                question=question, flag_type="negative", reason="Needs improvement"
                             )
-                            st.warning("Feedback recorded. An administrator will review this response.")
+                            st.warning("Feedback recorded.")
                     
                 except Exception as e:
-                    st.error(f"❌ Error processing question: {str(e)}")
+                    st.error(f"❌ Error: {str(e)}")
     
     with col2:
-        # Usage tips
         st.subheader("💡 Usage Tips")
         st.markdown("""
         **Ask specific questions:**
         - "What are the setback requirements?"
-        - "How do I calculate stormwater detention?"
-        - "What permits are needed for site development?"
+        - "What is the maximum driveway grade?"
+        - "When is an as-built survey required?"
         
         **The system will:**
         - Search the engineering manual
         - Provide cited answers
         - Show source locations
-        - Abstain if no relevant info found
-        
-        **Flag responses that are:**
-        - Incorrect or misleading
-        - Missing important details
-        - Not relevant to your question
+        - Abstain if no info found
         """)
         
-        # Recent queries
         st.subheader("🔍 Recent Queries")
         try:
-            recent_queries = st.session_state.audit_logger.get_recent_queries(limit=5)
-            
-            if recent_queries:
-                for query in recent_queries:
-                    with st.expander(f"🔎 {query['question'][:50]}..."):
-                        st.write(f"**Asked:** {query['timestamp']}")
-                        st.write(f"**Sources:** {query['sources_count']}")
-                        st.write(f"**Flagged:** {'Yes' if query.get('flagged') else 'No'}")
+            recent = st.session_state.audit_logger.get_recent_queries(limit=5)
+            if recent:
+                for q in recent:
+                    with st.expander(f"🔎 {q['question'][:40]}..."):
+                        st.write(f"**Asked:** {q['timestamp']}")
             else:
-                st.write("No recent queries found.")
+                st.write("No recent queries.")
         except:
-            st.write("Query history will appear here after asking questions.")
-    
-    # Navigation
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("🏠 Home"):
-            st.switch_page("app.py")
-    with col2:
-        if st.button("🧙‍♂️ Try Wizard Mode"):
-            st.switch_page("pages/2_Wizard_Mode.py")
-    with col3:
-        if st.button("⚙️ Admin Panel"):
-            st.switch_page("pages/3_Admin.py")
+            st.write("Query history will appear here.")
+
 
 if __name__ == "__main__":
     main()
