@@ -177,7 +177,7 @@ def main():
         - Manual file exists in `data/` folder
         """)
         if st.button("🏠 Return to Home"):
-            st.switch_page("Dashboard.py")
+            st.switch_page("app.py")
         return
     
     st.success("✅ Q&A system is ready!")
@@ -319,7 +319,7 @@ def main():
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("🏠 Home"):
-            st.switch_page("Dashboard.py")
+            st.switch_page("app.py")
     with col2:
         if st.button("🧙‍♂️ Try Wizard Mode"):
             st.switch_page("pages/2_Wizard_Mode.py")
