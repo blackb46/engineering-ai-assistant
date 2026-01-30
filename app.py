@@ -1,238 +1,226 @@
 import streamlit as st
-import os
 from pathlib import Path
 
-# This line configures how your web page looks and behaves
-# Think of it like setting the name, logo, and layout of your restaurant
+# Page configuration
 st.set_page_config(
-    page_title="Engineering AI Assistant",     # What shows in the browser tab
-    page_icon="🏗️",                            # The emoji that shows in the tab
-    layout="wide",                             # Use the full width of the screen
-    initial_sidebar_state="expanded"           # Start with the sidebar open
+    page_title="Engineering AI Assistant",
+    page_icon="👷‍♂️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Set sidebar title
-st.sidebar.title("🏗️ Navigation")
-
-# This is CSS code that makes your app look professional
-# CSS is like the interior design rules for your restaurant
-# You don't need to understand CSS - just know it makes things look good
+# Hide default page navigation and add custom styling
 st.markdown("""
 <style>
-    .main-header {
-        background: linear-gradient(90deg, #1f4e79 0%, #2d5aa0 100%);
+    /* Hide default streamlit page navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+    
+    /* Custom navigation styling */
+    .nav-link {
+        display: block;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem 0;
+        border-radius: 5px;
+        text-decoration: none;
+        color: #262730;
+        background: #f0f2f6;
+        transition: background 0.2s;
+    }
+    .nav-link:hover {
+        background: #e0e2e6;
+    }
+    .nav-link.active {
+        background: #ff4b4b;
         color: white;
-        padding: 1rem;
+    }
+    
+    /* Header styling */
+    .main-header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+        padding: 2rem;
         border-radius: 10px;
-        margin-bottom: 2rem;
+        color: white;
         text-align: center;
+        margin-bottom: 2rem;
     }
+    .main-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+    }
+    .main-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    /* Status cards */
     .status-card {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
+        background: white;
+        border-left: 4px solid #28a745;
         padding: 1rem;
-        margin: 0.5rem 0;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    .success { border-left: 4px solid #28a745; }
-    .warning { border-left: 4px solid #ffc107; }
-    .info { border-left: 4px solid #17a2b8; }
+    .status-card.warning {
+        border-left-color: #ffc107;
+    }
+    .status-card.error {
+        border-left-color: #dc3545;
+    }
+    
+    /* Mode cards */
+    .mode-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        height: 100%;
+    }
+    .mode-card h3 {
+        margin-top: 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-def check_system_status():
-    """
-    This function checks if all the required parts of your system are working
-    Think of it like a restaurant manager checking if the kitchen, dining room,
-    and staff are all ready before opening for business
-    """
-    # Create a dictionary to track what's working and what isn't
-    # A dictionary in Python is like a checklist with items and their status
-    status = {
-        'vector_db': False,      # Is the search database ready?
-        'manual_file': False,    # Is the engineering manual file available?
-        'api_configured': False  # Is the Claude API key set up correctly?
-    }
-    
-    # Check if the vector database exists and has files in it
-    # The vector database is like your restaurant's recipe collection
-    vectorstore_path = Path("vectorstore")  # Look in the vectorstore folder
-    if vectorstore_path.exists() and any(vectorstore_path.iterdir()):
-        status['vector_db'] = True  # Mark as working if folder exists and has files
-    
-    # Check if the original manual file is available
-    # This is like checking if you have the original cookbook
-    manual_path = Path("data/Engineering_Manual.docx")  # Look for the manual file
-    if manual_path.exists():  # If the file exists
-        status['manual_file'] = True  # Mark it as available
-    
-    # Check if the Claude API key is properly configured
-    # API key is like having a phone number to call Claude for help
-    try:
-        claude_key = st.secrets.get("CLAUDE_API_KEY", "")  # Try to get the API key
-        if claude_key and claude_key.startswith("sk-ant-"):  # Check if it looks right
-            status['api_configured'] = True  # Mark as configured
-    except:
-        pass  # If there's any error, just leave it as False
-    
-    return status  # Return the checklist of what's working
+# Custom Sidebar Navigation
+st.sidebar.title("🧭 Navigation")
+st.sidebar.markdown("---")
 
-def main():
-    """
-    This is the main function that creates your home page
-    Think of it as the function that sets up your restaurant's front entrance
-    """
-    # Create the main header (like a big sign at your restaurant entrance)
-    st.markdown("""
-    <div class="main-header">
-        <h1>🏗️ Engineering AI Assistant</h1>
-        <p>Municipal Engineering Policy Support System</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Check what's working and what isn't (like a daily system check)
-    st.subheader("📊 System Status")
-    status = check_system_status()  # Call our checking function
-    
-    # Create three columns to show status side by side
-    # Think of this like having three information boards at your entrance
-    col1, col2, col3 = st.columns(3)
-    
-    # Column 1: Vector Database status
-    with col1:
-        if status['vector_db']:  # If the database is working
-            st.markdown("""
-            <div class="status-card success">
-                <h4>✅ Vector Database</h4>
-                <p>Ready for searching</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:  # If the database is not working
-            st.markdown("""
-            <div class="status-card warning">
-                <h4>⚠️ Vector Database</h4>
-                <p>Not found - run notebook first</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Column 2: Engineering Manual status
-    with col2:
-        if status['manual_file']:  # If the manual file exists
-            st.markdown("""
-            <div class="status-card success">
-                <h4>✅ Engineering Manual</h4>
-                <p>Available for reference</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:  # If the manual file is missing
-            st.markdown("""
-            <div class="status-card warning">
-                <h4>⚠️ Engineering Manual</h4>
-                <p>Upload to data folder</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Column 3: Claude API status
-    with col3:
-        if status['api_configured']:  # If the API key is set up
-            st.markdown("""
-            <div class="status-card success">
-                <h4>✅ Claude API</h4>
-                <p>Configured and ready</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:  # If the API key is not set up
-            st.markdown("""
-            <div class="status-card warning">
-                <h4>⚠️ Claude API</h4>
-                <p>Add key to secrets</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Create the main navigation section (like a menu of restaurant options)
-    st.subheader("🎯 Choose Your Mode")
-    
-    # Create three columns for the three main features
-    col1, col2, col3 = st.columns(3)
-    
-    # Column 1: Q&A Mode (like ordering from a menu)
-    with col1:
-        st.markdown("""
-        ### 💬 Q&A Mode
-        Ask questions about engineering policies and get cited answers from the manual.
-        
-        **Features:**
-        - Semantic search through manual
-        - Source citations for every answer
-        - Abstention when answer not found
-        - Flagging system for feedback
-        """)
-        # Create a button that takes users to the Q&A page
-        if st.button("🚀 Launch Q&A Mode", key="qa_mode"):
-            st.switch_page("pages/1_QA_Mode.py")  # Go to the Q&A page
-    
-    # Column 2: Wizard Mode (like having a personal assistant)
-    with col2:
-        st.markdown("""
-        ### 🧙‍♂️ Wizard Mode
-        Step-by-step guidance for permit reviews and compliance checks.
-        
-        **Features:**
-        - Interactive decision trees
-        - Automated checklist generation
-        - Compliance verification
-        - Review documentation
-        """)
-        # Create a button that takes users to the Wizard page
-        if st.button("🚀 Launch Wizard Mode", key="wizard_mode"):
-            st.switch_page("pages/2_Wizard_Mode.py")  # Go to the Wizard page
-    
-    # Column 3: Admin Panel (like the manager's office)
-    with col3:
-        st.markdown("""
-        ### ⚙️ Admin Panel
-        Monitor system usage, review flagged responses, and manage the system.
-        
-        **Features:**
-        - Query audit logs
-        - Response monitoring
-        - User feedback review
-        - System management
-        """)
-        # Create a button that takes users to the Admin page
-        if st.button("🚀 Launch Admin Panel", key="admin_mode"):
-            st.switch_page("pages/3_Admin.py")  # Go to the Admin page
-    
-    # Create a help section that users can expand if they need guidance
-    with st.expander("📚 Quick Start Guide"):
-        st.markdown("""
-        ### First Time Setup:
-        1. **Upload your manual** to the `data/` folder
-        2. **Run the development notebook** to process your manual
-        3. **Add your Claude API key** to Streamlit secrets
-        4. **Test Q&A mode** with a sample question
-        5. **Try wizard mode** for permit review workflows
-        
-        ### Daily Usage:
-        - **Q&A Mode**: Ask policy questions, flag incorrect responses
-        - **Wizard Mode**: Guide permit reviews and compliance checks
-        - **Admin Panel**: Monitor usage and review flagged items weekly
-        
-        ### Need Help?
-        - Check system status above for configuration issues
-        - Review the documentation in your project folder
-        - Contact your system administrator for technical support
-        """)
-    
-    # Create a footer with system information
-    st.markdown("---")  # This creates a horizontal line
-    st.markdown("""
-    <div style='text-align: center; color: #666;'>
-        <p>Engineering AI Assistant v1.0 | Powered by Claude API | Built with Streamlit</p>
-        <p>Municipal Engineering Department | ECE 570 Course Project</p>
-    </div>
-    """, unsafe_allow_html=True)
+# Navigation buttons using page_link
+st.sidebar.page_link("app.py", label="🏡 Dashboard", icon=None)
+st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode", icon=None)
+st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode", icon=None)
+st.sidebar.page_link("pages/3_Admin.py", label="⚙️ Admin Panel", icon=None)
 
-# This is the standard Python way to run the main function when the file is executed
-if __name__ == "__main__":
-    main()  # Call the main function to set up the page
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Engineering AI Assistant**")
+st.sidebar.markdown("v1.0 | Brentwood, TN")
+
+# Main content
+st.markdown("""
+<div class="main-header">
+    <h1>👷‍♂️ Engineering AI Assistant</h1>
+    <p>Municipal Engineering Policy Support System</p>
+</div>
+""", unsafe_allow_html=True)
+
+# System Status Section
+st.subheader("📊 System Status")
+
+col1, col2, col3 = st.columns(3)
+
+# Check vector database
+vectorstore_path = Path("vectorstore")
+vector_ready = vectorstore_path.exists()
+
+# Check manual file
+data_path = Path("data")
+manual_ready = data_path.exists()
+
+# Check API (we'll assume it's configured if secrets exist)
+try:
+    api_ready = bool(st.secrets.get("CLAUDE_API_KEY"))
+except:
+    api_ready = False
+
+with col1:
+    if vector_ready:
+        st.success("✅ **Vector Database**\n\nReady for searching")
+    else:
+        st.warning("⚠️ **Vector Database**\n\nNot initialized")
+
+with col2:
+    if manual_ready:
+        st.success("✅ **Engineering Manual**\n\nAvailable for reference")
+    else:
+        st.warning("⚠️ **Engineering Manual**\n\nNot found")
+
+with col3:
+    if api_ready:
+        st.success("✅ **Claude API**\n\nConfigured and ready")
+    else:
+        st.error("❌ **Claude API**\n\nNot configured")
+
+# Mode Selection Section
+st.markdown("---")
+st.subheader("🎯 Choose Your Mode")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("### 💬 Q&A Mode")
+    st.markdown("Ask questions about engineering policies and get cited answers from the manual.")
+    st.markdown("""
+    **Features:**
+    - Semantic search through manual
+    - Source citations for every answer
+    - Abstention when answer not found
+    - Flagging system for feedback
+    """)
+    if st.button("🚀 Launch Q&A Mode", key="qa_btn"):
+        st.switch_page("pages/1_QA_Mode.py")
+
+with col2:
+    st.markdown("### 🧙‍♂️ Wizard Mode")
+    st.markdown("Step-by-step guidance for permit reviews and compliance checks.")
+    st.markdown("""
+    **Features:**
+    - Interactive decision trees
+    - Automated checklist generation
+    - Compliance verification
+    - Review documentation
+    """)
+    if st.button("🚀 Launch Wizard Mode", key="wizard_btn"):
+        st.switch_page("pages/2_Wizard_Mode.py")
+
+with col3:
+    st.markdown("### ⚙️ Admin Panel")
+    st.markdown("Monitor system usage, review flagged responses, and manage the system.")
+    st.markdown("""
+    **Features:**
+    - Query audit logs
+    - Response monitoring
+    - User feedback review
+    - System management
+    """)
+    if st.button("🚀 Launch Admin Panel", key="admin_btn"):
+        st.switch_page("pages/3_Admin.py")
+
+# Quick Start Guide
+st.markdown("---")
+with st.expander("📚 Quick Start Guide"):
+    st.markdown("""
+    ### Getting Started
+    
+    1. **Q&A Mode**: Best for quick policy questions
+       - Type your question in natural language
+       - Review the cited answer and sources
+       - Flag any responses that need improvement
+    
+    2. **Wizard Mode**: Best for permit reviews
+       - Select the type of review (Transitional Lot, HP Lot, etc.)
+       - Follow the step-by-step checklist
+       - Generate compliance documentation
+    
+    3. **Admin Panel**: For supervisors and system administrators
+       - Monitor query history and usage patterns
+       - Review flagged responses
+       - Manage system settings
+    
+    ### Tips for Best Results
+    
+    - Be specific in your questions
+    - Reference specific code sections when known
+    - Use the feedback system to improve responses
+    - Check multiple sources for complex questions
+    """)
+
+# Footer
+st.markdown("---")
+st.markdown(
+    "<div style='text-align: center; color: #666; font-size: 0.9rem;'>"
+    "Engineering AI Assistant v1.0 | Powered by Claude API | Built with Streamlit"
+    "</div>",
+    unsafe_allow_html=True
+)
