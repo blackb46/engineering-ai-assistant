@@ -1,0 +1,164 @@
+import streamlit as st
+import sys
+from pathlib import Path
+
+# Add utils to path
+sys.path.append(str(Path(__file__).parent.parent / "utils"))
+
+from wizard_engine import WizardEngine
+from database import AuditLogger
+
+st.set_page_config(page_title="Wizard Mode", page_icon="🧙‍♂️", layout="wide")
+
+def main():
+    """Main function for Wizard Mode page"""
+    st.title("🧙‍♂️ Engineering Wizard Mode")
+    st.markdown("Step-by-step guidance for permit reviews and compliance checks.")
+    
+    # Initialize components
+    if 'wizard_engine' not in st.session_state:
+        st.session_state.wizard_engine = WizardEngine()
+    
+    if 'audit_logger' not in st.session_state:
+        st.session_state.audit_logger = AuditLogger()
+    
+    # Show available wizards
+    st.subheader("🎯 Choose Your Workflow")
+    
+    # Define available wizards
+    wizards = {
+        "Site Development Review": {
+            "description": "Review site development plans for compliance",
+            "icon": "🏗️",
+            "steps": ["Project Info", "Zoning Check", "Utilities", "Drainage", "Final Review"]
+        },
+        "Stormwater Permit Review": {
+            "description": "Evaluate stormwater management plans", 
+            "icon": "🌧️",
+            "steps": ["Basin Analysis", "Detention Sizing", "Outlet Design", "Maintenance Plan"]
+        },
+        "Residential Plan Review": {
+            "description": "Review residential development applications",
+            "icon": "🏘️", 
+            "steps": ["Lot Requirements", "Setbacks", "Access", "Utilities", "Approval"]
+        }
+    }
+    
+    # Display wizard options
+    col1, col2 = st.columns(2)
+    
+    for i, (wizard_name, wizard_info) in enumerate(wizards.items()):
+        col = col1 if i % 2 == 0 else col2
+        
+        with col:
+            st.markdown(f"""
+            <div style='border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin: 0.5rem 0; background: #f8f9fa;'>
+                <h4>{wizard_info['icon']} {wizard_name}</h4>
+                <p>{wizard_info['description']}</p>
+                <small><strong>Steps:</strong> {' → '.join(wizard_info['steps'])}</small>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"Start {wizard_name}", key=f"start_{wizard_name}"):
+                st.session_state.current_wizard = wizard_name
+                st.session_state.wizard_step = 0
+                st.session_state.wizard_data = {}
+                st.rerun()
+    
+    # Run active wizard
+    if 'current_wizard' in st.session_state:
+        st.markdown("---")
+        run_simple_wizard()
+    
+    # Navigation
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("🏠 Home"):
+            st.switch_page("app.py")
+    with col2:
+        if st.button("💬 Try Q&A Mode"):
+            st.switch_page("pages/1_QA_Mode.py") 
+    with col3:
+        if st.button("⚙️ Admin Panel"):
+            st.switch_page("pages/3_Admin.py")
+
+def run_simple_wizard():
+    """Run a simplified wizard workflow"""
+    wizard_name = st.session_state.current_wizard
+    st.subheader(f"🧙‍♂️ {wizard_name} Wizard")
+    
+    # Simple demonstration wizard
+    st.markdown("### 📋 Project Information")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        project_name = st.text_input("Project Name", key="wiz_proj_name")
+        location = st.text_input("Project Location", key="wiz_location")
+        
+    with col2:
+        project_type = st.selectbox("Development Type", 
+            ["Commercial", "Industrial", "Residential", "Mixed Use"], key="wiz_type")
+        applicant = st.text_input("Applicant Name", key="wiz_applicant")
+    
+    # Basic checklist
+    st.markdown("### ✅ Basic Review Checklist")
+    checklist_items = [
+        "Project information complete",
+        "Site plans provided", 
+        "Zoning compliance verified",
+        "Utility connections planned",
+        "Drainage calculations included",
+        "Environmental review completed"
+    ]
+    
+    completed_items = []
+    for item in checklist_items:
+        if st.checkbox(item, key=f"check_{item}"):
+            completed_items.append(item)
+    
+    # Progress indicator
+    progress = len(completed_items) / len(checklist_items)
+    st.progress(progress)
+    st.write(f"Progress: {len(completed_items)}/{len(checklist_items)} items completed")
+    
+    # Generate report
+    if st.button("📄 Generate Review Summary"):
+        report = f"""ENGINEERING REVIEW SUMMARY
+{'='*40}
+
+Project: {project_name}
+Location: {location}
+Type: {project_type}
+Applicant: {applicant}
+
+COMPLETED ITEMS:
+{chr(10).join(f'✅ {item}' for item in completed_items)}
+
+REMAINING ITEMS:
+{chr(10).join(f'⏳ {item}' for item in checklist_items if item not in completed_items)}
+
+Status: {len(completed_items)}/{len(checklist_items)} Complete
+Progress: {progress*100:.1f}%
+
+Generated by Engineering AI Assistant
+{st.session_state.get('timestamp', 'Unknown time')}
+"""
+        
+        st.text_area("Review Summary", report, height=400)
+        st.download_button(
+            "💾 Download Report",
+            report,
+            file_name=f"{project_name.replace(' ', '_')}_review.txt",
+            mime="text/plain"
+        )
+    
+    # Reset button
+    if st.button("🔄 Start New Wizard"):
+        for key in ['current_wizard', 'wizard_step', 'wizard_data']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()
+
+if __name__ == "__main__":
+    main()
