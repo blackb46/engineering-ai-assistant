@@ -11,6 +11,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"           # Start with the sidebar open
 )
 
+# Set sidebar title
+st.sidebar.title("🏗️ Navigation")
+
 # This is CSS code that makes your app look professional
 # CSS is like the interior design rules for your restaurant
 # You don't need to understand CSS - just know it makes things look good
