@@ -1,0 +1,19 @@
+[[pages]]
+path = "app.py"
+name = "Dashboard"
+icon = "🏠"
+
+[[pages]]
+path = "pages/1_QA_Mode.py"
+name = "Q&A Mode"
+icon = "💬"
+
+[[pages]]
+path = "pages/2_Wizard_Mode.py"
+name = "Wizard Mode"
+icon = "🧙‍♂️"
+
+[[pages]]
+path = "pages/3_Admin.py"
+name = "Admin"
+icon = "⚙️"
