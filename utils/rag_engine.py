@@ -106,7 +106,7 @@ class RAGEngine:
                 'answer': answer,
                 'sources': sources,
                 'chunks_used': len(relevant_chunks),
-                'model_used': 'claude-3-5-sonnet-20250514',
+                'model_used': 'claude-sonnet-4-5-20250929',
                 'token_usage': {'input_tokens': 0, 'output_tokens': 0}
             }
             
@@ -180,7 +180,7 @@ ANSWER:"""
 
         try:
             response = self.claude_client.messages.create(
-                model="claude-3-5-sonnet-20250514",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=1000,
                 temperature=0.1,
                 messages=[{"role": "user", "content": prompt}]
