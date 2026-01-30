@@ -10,6 +10,34 @@ from database import AuditLogger
 
 st.set_page_config(page_title="Wizard Mode", page_icon="🧙‍♂️", layout="wide")
 
+# ============================================================
+# Navigation Code
+# ============================================================
+
+# Hide default navigation and add custom styling
+st.markdown("""
+<style>
+    /* Hide default streamlit page navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Custom Sidebar Navigation
+st.sidebar.title("🏗️ Navigation")
+st.sidebar.markdown("---")
+st.sidebar.page_link("app.py", label="🏠 Dashboard")
+st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode")
+st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode")
+st.sidebar.page_link("pages/3_Admin.py", label="⚙️ Admin Panel")
+st.sidebar.markdown("---")
+
+# ============================================================
+# END OF NAVIGATION CODE
+# ============================================================
+
+
 def main():
     """Main function for Wizard Mode page"""
     st.title("🧙‍♂️ Engineering Wizard Mode")
