@@ -29,6 +29,48 @@ REVIEWERS = ["KB", "JD", "JM", "RL", "PM", "JC", "SKT", "DB"]
 # applies_to: list of review types this item applies to (empty = all)
 
 CHECKLIST_SECTIONS = {
+    # =========================================================================
+    # SECTION 0: GENERAL/PRELIMINARY (Quick exit for incomplete plans)
+    # =========================================================================
+    "general_preliminary": {
+        "name": "0. General/Preliminary",
+        "items": [
+            {
+                "id": "0.1",
+                "description": "Plan complete enough for full review (Land Disturbance Plan requirements)",
+                "comment_ids": ["BB-0011"],
+                "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
+            },
+            {
+                "id": "0.2",
+                "description": "Plan complete enough for full review (Transitional Lot requirements)",
+                "comment_ids": ["BB-0013"],
+                "applies_to": ["Transitional Lot", "Hillside Protection Lot"]
+            },
+            {
+                "id": "0.3",
+                "description": "Engineering review required (>800 sq ft additional impervious)",
+                "comment_ids": ["BB-0018"],
+                "applies_to": []  # All
+            },
+            {
+                "id": "0.4",
+                "description": "ROW/PUDE damage repair note needed",
+                "comment_ids": ["BB-0024"],
+                "applies_to": []  # All
+            },
+            {
+                "id": "0.5",
+                "description": "Resubmittal instructions provided",
+                "comment_ids": ["BB-0045"],
+                "applies_to": []  # All
+            },
+        ]
+    },
+
+    # =========================================================================
+    # SECTION 1: PLAN DOCUMENTATION
+    # =========================================================================
     "plan_documentation": {
         "name": "1. Plan Documentation",
         "items": [
@@ -59,7 +101,7 @@ CHECKLIST_SECTIONS = {
             {
                 "id": "1.5",
                 "description": "Current field run topography with 2' contours and actual elevations based on benchmark",
-                "comment_ids": ["BB-0083"],
+                "comment_ids": ["BB-0083", "BB-0124"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
@@ -107,12 +149,21 @@ CHECKLIST_SECTIONS = {
             {
                 "id": "1.13",
                 "description": "Dumpster location shown with accessible route by transport",
-                "comment_ids": ["BB-0060", "BB-0069"],
+                "comment_ids": ["BB-0060"],
+                "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
+            },
+            {
+                "id": "1.14",
+                "description": "Concrete washout location shown with accessible route",
+                "comment_ids": ["BB-0069"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
         ]
     },
     
+    # =========================================================================
+    # SECTION 2: STANDARD DETAILS
+    # =========================================================================
     "standard_details": {
         "name": "2. Standard Details",
         "items": [
@@ -125,7 +176,7 @@ CHECKLIST_SECTIONS = {
             {
                 "id": "2.2",
                 "description": "Temporary construction entrance (12'W x 30'L, ASTM #1 stone, filter fabric)",
-                "comment_ids": ["BB-0064"],
+                "comment_ids": ["BB-0064", "BB-0132", "BB-0054"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
@@ -155,25 +206,34 @@ CHECKLIST_SECTIONS = {
             {
                 "id": "2.7",
                 "description": "Underground drainage infrastructure detail",
-                "comment_ids": ["BB-0027"],
+                "comment_ids": ["BB-0130"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
+            },
+            {
+                "id": "2.8",
+                "description": "Sidewalk detail (if applicable)",
+                "comment_ids": ["BB-0070"],
+                "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
         ]
     },
     
+    # =========================================================================
+    # SECTION 3: PROPERTY & BOUNDARIES
+    # =========================================================================
     "property_boundaries": {
         "name": "3. Property & Boundaries",
         "items": [
             {
                 "id": "3.1",
                 "description": "Property lines with bearings and distances (check against recorded plat)",
-                "comment_ids": ["BB-0001", "BB-0112"],
+                "comment_ids": ["BB-0131", "BB-0001", "BB-0112"],
                 "applies_to": []  # All
             },
             {
                 "id": "3.2",
                 "description": "Building setbacks shown, labeled and dimensioned",
-                "comment_ids": ["BB-0078", "BB-0063"],
+                "comment_ids": ["BB-0125", "BB-0078", "BB-0063"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
@@ -191,6 +251,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 4: TOPOGRAPHY & GRADING
+    # =========================================================================
     "topography_grading": {
         "name": "4. Topography & Grading",
         "items": [
@@ -215,12 +278,15 @@ CHECKLIST_SECTIONS = {
             {
                 "id": "4.4",
                 "description": "Off-site topography extended 25' beyond boundaries if grading within 20' of boundary",
-                "comment_ids": ["BB-0028"],
+                "comment_ids": ["BB-0028", "BB-0046"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
         ]
     },
     
+    # =========================================================================
+    # SECTION 5: DRIVEWAYS
+    # =========================================================================
     "driveways": {
         "name": "5. Driveways",
         "items": [
@@ -233,7 +299,7 @@ CHECKLIST_SECTIONS = {
             {
                 "id": "5.2",
                 "description": "Driveway slope (20% max hard surface, 10% gravel, 5% max cross slope)",
-                "comment_ids": ["BB-0041"],
+                "comment_ids": ["BB-0126"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
             {
@@ -275,6 +341,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 6: RETAINING WALLS
+    # =========================================================================
     "retaining_walls": {
         "name": "6. Retaining Walls",
         "items": [
@@ -317,6 +386,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 7: DRAINAGE
+    # =========================================================================
     "drainage": {
         "name": "7. Drainage",
         "items": [
@@ -362,16 +434,25 @@ CHECKLIST_SECTIONS = {
                 "comment_ids": ["BB-0034", "BB-0037"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
+            {
+                "id": "7.8",
+                "description": "Positive drainage within right-of-way shown with contours/spot elevations",
+                "comment_ids": ["BB-0082"],
+                "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
+            },
         ]
     },
     
+    # =========================================================================
+    # SECTION 8: EROSION CONTROL
+    # =========================================================================
     "erosion_control": {
         "name": "8. Erosion Control",
         "items": [
             {
                 "id": "8.1",
                 "description": "Erosion control shown on plan with legend and/or annotations",
-                "comment_ids": ["BB-0072", "BB-0004"],
+                "comment_ids": ["BB-0072"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
@@ -382,24 +463,18 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "8.3",
-                "description": "Construction entrance detail",
-                "comment_ids": ["BB-0064"],
+                "description": "Construction entrance detail with ROW protection notes",
+                "comment_ids": ["BB-0064", "BB-0054"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
                 "id": "8.4",
-                "description": "Concrete washout shown",
-                "comment_ids": ["BB-0069"],
-                "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
-            },
-            {
-                "id": "8.5",
                 "description": "Limits of disturbance shown",
                 "comment_ids": ["BB-0095"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
-                "id": "8.6",
+                "id": "8.5",
                 "description": "Brentwood Critical Erosion Control Notes provided",
                 "comment_ids": ["BB-0031"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
@@ -407,6 +482,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 9: TREES & LANDSCAPING
+    # =========================================================================
     "trees_landscaping": {
         "name": "9. Trees & Landscaping",
         "items": [
@@ -437,6 +515,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 10: UTILITIES
+    # =========================================================================
     "utilities": {
         "name": "10. Utilities",
         "items": [
@@ -461,6 +542,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 11: SITE CALCULATIONS
+    # =========================================================================
     "site_calculations": {
         "name": "11. Site Calculations",
         "items": [
@@ -485,25 +569,28 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 12: SITE ELEVATIONS
+    # =========================================================================
     "site_elevations": {
         "name": "12. Site Elevations",
         "items": [
             {
                 "id": "12.1",
-                "description": "FFE shown",
-                "comment_ids": ["BB-0075"],
+                "description": "FFE shown for all structures",
+                "comment_ids": ["BB-0127"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
                 "id": "12.2",
                 "description": "Garage elevation shown",
-                "comment_ids": ["BB-0075"],
+                "comment_ids": ["BB-0128"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
             {
                 "id": "12.3",
                 "description": "Basement elevation shown (if applicable)",
-                "comment_ids": ["BB-0075"],
+                "comment_ids": ["BB-0129"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
             {
@@ -521,6 +608,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 13: SIGNATURES & NOTES
+    # =========================================================================
     "signatures_notes": {
         "name": "13. Signatures & Notes",
         "items": [
@@ -545,6 +635,9 @@ CHECKLIST_SECTIONS = {
         ]
     },
     
+    # =========================================================================
+    # SECTION 14: SPECIAL CONDITIONS
+    # =========================================================================
     "special_conditions": {
         "name": "14. Special Conditions",
         "items": [
@@ -578,71 +671,111 @@ CHECKLIST_SECTIONS = {
                 "comment_ids": ["BB-0012", "BB-0084"],
                 "applies_to": ["Hillside Protection Lot"]
             },
+            {
+                "id": "14.6",
+                "description": "Geotechnical inspection report required (HP lots)",
+                "comment_ids": ["BB-0022"],
+                "applies_to": ["Hillside Protection Lot"]
+            },
         ]
     },
     
-    # Pool-specific section
+    # =========================================================================
+    # SECTION 15: POOL PERMIT SPECIFIC
+    # =========================================================================
     "pool_specific": {
         "name": "15. Pool Permit Specific",
         "items": [
             {
                 "id": "15.1",
+                "description": "Review is for grading only (Building & Codes handles pool decking)",
+                "comment_ids": ["BB-0014"],
+                "applies_to": ["Pool Permit"]
+            },
+            {
+                "id": "15.2",
+                "description": "Fence/gate/pool/spa approval note (Building & Codes required)",
+                "comment_ids": ["BB-0030"],
+                "applies_to": ["Pool Permit"]
+            },
+            {
+                "id": "15.3",
                 "description": "Pool fence location - not in PUDE or along property line issues",
                 "comment_ids": ["BB-0017", "BB-0122", "BB-0123"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.2",
+                "id": "15.4",
                 "description": "Pool fence location - not in sewer or other easement",
                 "comment_ids": ["BB-0122"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.3",
+                "id": "15.5",
                 "description": "Plan shows entire rear yard with grades",
                 "comment_ids": ["BB-0097"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.4",
+                "id": "15.6",
                 "description": "Pool and decking shown within setbacks",
                 "comment_ids": ["BB-0063", "BB-0093"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.5",
+                "id": "15.7",
                 "description": "Setbacks correct per approved plat",
                 "comment_ids": ["BB-0078"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.6",
+                "id": "15.8",
                 "description": "Stormwater does not flow towards house",
-                "comment_ids": ["BB-0075", "BB-0071"],
+                "comment_ids": ["BB-0071"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.7",
+                "id": "15.9",
                 "description": "Pool contractor limits of work clearly shown",
                 "comment_ids": ["BB-0090", "BB-0098"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.8",
+                "id": "15.10",
                 "description": "Code compliant pool fence shown",
                 "comment_ids": ["BB-0076"],
                 "applies_to": ["Pool Permit"]
             },
             {
-                "id": "15.9",
+                "id": "15.11",
                 "description": "Pool deck paver detail (if applicable)",
                 "comment_ids": ["BB-0047"],
+                "applies_to": ["Pool Permit"]
+            },
+            {
+                "id": "15.12",
+                "description": "Normal pool elevation at drain location",
+                "comment_ids": ["BB-0015"],
+                "applies_to": ["Pool Permit"]
+            },
+            {
+                "id": "15.13",
+                "description": "Pool deck elevation not higher than home elevations",
+                "comment_ids": ["BB-0016"],
+                "applies_to": ["Pool Permit"]
+            },
+            {
+                "id": "15.14",
+                "description": "Floodplain steps completed (if applicable)",
+                "comment_ids": ["BB-0099"],
                 "applies_to": ["Pool Permit"]
             },
         ]
     },
     
-    # Fence-specific section
+    # =========================================================================
+    # SECTION 16: FENCE PERMIT SPECIFIC
+    # =========================================================================
     "fence_specific": {
         "name": "16. Fence Permit Specific",
         "items": [
