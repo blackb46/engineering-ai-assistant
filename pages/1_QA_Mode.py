@@ -304,18 +304,15 @@ def main():
         except:
             st.write("Query history will appear here.")
 
-    # Navigation
+    # Navigation (Admin Panel removed - now 2 columns)
     st.markdown("---")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("🏠 Home"):
             st.switch_page("app.py")
     with col2:
-        if st.button("📋 Checklists"):
+        if st.button("🧙‍♂️ Wizard Mode"):
             st.switch_page("pages/2_Wizard_Mode.py")
-    with col3:
-        if st.button("⚙️ Admin Panel"):
-            st.switch_page("pages/3_Admin.py")
 
 
 if __name__ == "__main__":
