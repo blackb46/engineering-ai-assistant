@@ -7,7 +7,10 @@ Purpose: Contains all standard BB comments for plan reviews
 
 All comments are stored in a dictionary with Comment_ID as key.
 Comments BB-0001 through BB-0102 are from the original template.
-Comments BB-0103 through BB-0123 are new additions.
+Comments BB-0103 through BB-0132 are new additions.
+
+RESERVED FOR SUBDIVISION REVIEWS (not used in residential checklists):
+BB-0002, BB-0003, BB-0004, BB-0005, BB-0006, BB-0007, BB-0008, BB-0019
 ==============================================================================
 """
 
@@ -52,8 +55,6 @@ COMMENTS = {
     "BB-0018": "Since the total additional impervious surface is less than 800 square feet, a grading plan is not required. However, the proposed construction shall be required to comply with the erosion control requirements set forth in subsection 56-13(3) of the Brentwood City Code.",
     
     "BB-0019": "Provide underdrains in accordance with Article 6.5 of the subdivision regulations. Refer to Appendix Two, Drawings 6 and 7 of the Subdivision Regulations for underdrain detail. Update standard detail to show underdrains and provide notation on plans where underdrains are necessary.",
-    
-    "BB-0020": "Please review this and determine if adequately accommodated",
     
     "BB-0021": "Provide swale calculations including velocities to ensure final stabilization is maintained.",
     
@@ -131,27 +132,17 @@ BRENTWOOD CRITICAL EROSION CONTROL NOTES:
     
     "BB-0047": "Provide paver detail for pool deck. If designed for infiltration, soil testing of native soil under paver gravel is required to infiltrate at 0.5 inches per hour. If an underdrain system is proposed, show drainage pipe network and provide proper outlet protection for all pipes.",
     
-    "BB-0048": "Post Planning Commission Approval submit final construction documents to Engineering Department for review and approval of a Grading Permit.",
-    
     "BB-0049": "Provide signatures and dates for the acknowledgement form and other areas of the plans reserved for signatures that are blank.",
-    
-    "BB-0050": "Since the total additional impervious surface is less than 800 square feet, a grading plan is not required. However, the proposed construction shall be required to comply with the erosion control requirements set forth in subsection 56-13(3) of the Brentwood City Code. If total additional impervious exceeds 800 square feet, additional plans and reviews will be required in accordance with Brentwood Code.",
     
     "BB-0051": "Clearly display existing and proposed contours on the grading plans. As shown, it is difficult to determine the proposed grading.",
     
     "BB-0052": "Per City Code, driveways and parking areas and structures shall be located a minimum of five feet away from any adjoining property line.",
     
-    "BB-0053": "Pending approval of application, further engineering review will be required prior to issuance of required permits.",
-    
     "BB-0054": "There are concerns with providing construction access over existing curb and gutter, grass strip, and sidewalk. Provide a note on the plans stating that the curb and gutter, sidewalk and grass strip shall be protected during construction. Also provide a note stating the contractor is responsible for any and all repairs to damages within the right-of-way and will be inspected by the City prior to issuance of a certificate of occupancy.",
     
     "BB-0055": "Indicate on plans the proposed permanent stabilization methods of all disturbed areas. If different stabilization methods are proposed for steeper slopes, indicate or shade these areas on the plans to discern the difference in stabilization method proposed.",
     
-    "BB-0056": "This plan was reviewed assuming all proposed items and site work will be completed as shown. Separate permits are required for the pool, retaining walls, fence, and pool house and include all requirements from the BOZA review. Should any proposed item on this plan be adjusted or removed, a new overall grading plan will be necessary for review to ensure all proposed modifications are properly planned and coordinated.",
-    
     "BB-0057": "A 30-ft driveway apron is required in front of the garage. If 30-ft cannot be provided, a minimum of 24-ft apron can be provided if a 10-ft wide by 12-ft long dovetail is provided as a turnaround.",
-    
-    "BB-0058": "The total amount of additional impervious surface proposed for the lot exceeds 800 square feet which by Code is defined as a substantial rebuild and requires a grading permit based on conditions stated under Section 56-12 (3). Provide a complete plan set in compliance with all elements of the Land Disturbance Plan provided in the City of Brentwood Zoning Code Chapter 56, Article 1, Subdivision 1, Sec. 56-13. - Land disturbance plan. Below is a link to the code section: https://library.municode.com/tn/brentwood/codes/code_of_ordinances?nodeId=PTIICOOR_CH56STMAERCOFLDAPR_ARTISTMAERCO_SDIGRPE_S56-13LADIPL",
     
     "BB-0059": "Label adjacent lots with parcel data on plans.",
     
@@ -213,8 +204,6 @@ Proposed fence to comply with Williamson County Swimming pool fence specificatio
     
     "BB-0080": "Stormwater report is sufficient for preliminary plan approval only. Approval of the grading permit will require additional analysis of the proposed drainage system on site per City Subdivision Regulations Article 6.",
     
-    "BB-0081": "Geotechnical report is sufficient for preliminary plan approval only. Approval of the grading permit will require additional analysis of the proposed roadway and individual proposed structures on each lot. Details of the required report will be verified by applicant with City Staff prior to grading permit submittal.",
-    
     "BB-0082": "The contractor is responsible to provide positive drainage within the right-of-way. Proposed contours spot elevations are required on the plans to clearly show how drainage is being properly conveyed within the right-of-way.",
     
     "BB-0083": "Per City Code a recent/current field run survey with topography, 2-ft contours, and actual elevations based on a benchmark is required. Survey provided is dated nearly 10 years ago. At a minimum, provide a new survey of the area of the new addition and at least 50 feet in all directions to ensure conditions shown on the site plan match with the older survey provided. If the conditions do not match at the 50 foot distance, additional survey is required either until the new and old surveys match or the survey extends to all property lines.",
@@ -229,14 +218,9 @@ This lot contains slopes greater than 15% and is considered a Transitional Lot. 
     
     "BB-0087": "Provide completed transitional lot checklist and provide signature. The transitional lot checklist can be found at the following link: https://www.brentwoodtn.gov/files/assets/city/v/1/engineering/jc-files/transitional-lot-checklist-071224.pdf",
     
-    "BB-0088": "Post Planning Commission Approval submit final construction documents to Engineering Department for review. Further engineering review will be required prior to issuance of required permits.",
-    
     "BB-0089": "For all swales with long slope lengths and grades exceeding 5%, sod alone is not considered sufficient for permanent stabilization under TDEC and City of Brentwood standards. Please provide additional permanent stabilization measures such as turf reinforcement matting, erosion control blankets, check dams, staked sod, or other approved methods in these areas to control erosion both during and after construction. The specific locations and types of stabilization should be selected based on the swale design and documented flow calculations, demonstrating that the measures are adequate for the site's expected velocities and slope conditions",
     
     "BB-0090": "Clearly designate and outline the pool construction work areas and areas of disturbance, making sure they are distinguished from the overall site work and home construction. Include a note on the plan that specifies exactly which portions of the project the pool contractor is responsible for. As currently presented, the plan incorrectly suggests that the pool contractor is also responsible for lot grading, retaining walls, the driveway, and other unrelated site work. The plan must clearly show and label the pool contractor's limits of work and scope of responsibility.",
-    
-    "BB-0091": """Provide the following note in the notes section of the plat.
-IN ACCORDANCE WITH THE REQUIREMENTS OF SECTION 78-14 OF THE MUNICIPAL CODE, LOTS DESIGNATED WITH (*) HAVE NATURAL SLOPES OF GREATER THAN 15%. PRIOR TO THE ISSUANCE OF A BUILDING PERMIT FOR A RESIDENTIAL LOT WITH A SLOPE OF 15% OR GREATER, A PLAN SHALL BE PREPARED BY A LICENSED PROFESSIONAL ENGINEER FOR APPROVAL BY THE CITY ENGINEER SHOWING EXISTING TOPOGRAPHIC INFORMATION FROM FIELD RUN SURVEY DATA, BOUNDARY AND SETBACK LINES, UTILITY AND DRAINAGE EASEMENTS, EXISTING AND PROPOSED DRAINAGE PIPES, DITCHES AND SWALES TO BE CONNECTED TO PUBLIC DRAINAGE LINES AND/OR TO DIRECT OR RE-DIRECT STORMWATER RUNOFF, THE PROPOSED BUILDING FOOTPRINT AND THE DRIVEWAY PLAN, INCLUDING THE FINISHED FLOOR ELEVATIONS AND FINISHED GRADES OF PAVEMENTS AND GROUND LINES, IDENTIFICATION OF EXISTING TREES IN EXCESS OF FOUR-INCH CALIPER AND TREES TO BE PRESERVED, AND THE LOCATION AND TIMING OF INSTALLATION OF EROSION CONTROL FEATURES. NO CLEAR CUTTING OF TREES OR GRADING OF THE LOT SHALL BE PERMITTED UNTIL APPROVAL OF THE SITE PLAN BY THE CITY ENGINEER.""",
     
     "BB-0092": "Provide driveway ramp detail on the plans. Use City Standard driveway ramp detail or equivalent. City standard detail is provided here: https://www.brentwoodtn.gov/files/assets/city/v/1/engineering/jc-files/cob-std-dwg5.pdf",
     
@@ -266,17 +250,10 @@ Once a Code-compliant submittal is provided, further review will commence.""",
 - Submit a revised final plat to Brentwood Planning Commission showing the revised setback line based on the graded area and revised BFE contour line.
 - Submit this revised pool permit for review once the final plat is recorded (this is because the pool and pool deck cannot be located outside the building setbacks which based on the current plat is shown right up to the back of the existing home).""",
     
-    "BB-0100": """The following steps are required prior to signing the final plat:
-- Based on notes on the submittal, grading is proposed on the site. Submit for and obtain a grading permit from the City showing the proposed grading needed to adjust to the proposed BFE for the lot as shown. The grading plan must show and provide calculations of any fill and required compensatory cut within the floodplain.
-- Submit an as-built survey from a TN licensed surveyor showing the grading matches the proposed plan and shows the BFE line which will also serve as the revised setback line on the lot.
-- Should the as-built survey after site grading differ from the submitted plat, a revised final plat will be required to be submitted to Brentwood Planning Commission showing the revised setback line based on the graded area and revised BFE contour line.""",
-    
-    "BB-0101": "Add note: All designated Stormwater Management facilities to be maintained in accordance with the recorded Stormwater Management Agreement BK____ , PG ____ by Home Owner's Association (HOA).",
-    
     "BB-0102": "If retaining wall is over 60 inches, it has to be a rail barrier. For under 60 inches, provide plant species, spacing and height.",
 
     # =========================================================================
-    # NEW COMMENTS (BB-0103 through BB-0123)
+    # NEW COMMENTS (BB-0103 through BB-0132)
     # =========================================================================
     
     "BB-0103": "Provide name and phone number of the builder and owner (if other than builder) on the plan.",
@@ -329,6 +306,24 @@ c. Sight distance limitations. No fence shall be placed on private property near
 • This approval of a fence to be installed in a P.U.D.E. does not relieve the current or future property owner from the responsibility and cost of having to remove or replace the fence in the future, if the City of Brentwood or any other utility owner were to need full access to any of the P.U.D.E. for routine maintenance or utility relocation.
 • A fence cannot encompass or encumber a common lot drainage swale.
 • If this location is out of the service limits of Brentwood Water Department, the Owner is responsible for contacting Metro Water Services for location of any possible underground sewer locations, and Nolensville/College Grove for location of any possible underground water lines within the affected PUDE's.""",
+    
+    "BB-0124": "Provide date of survey on the plans.",
+    
+    "BB-0125": "Show and label building setbacks with dimensions on plans.",
+    
+    "BB-0126": "The maximum grade of any portion of a driveway shall not exceed 20% for paved surfaces and 10% for unpaved surfaces, with a maximum cross slope of 5%.",
+    
+    "BB-0127": "Show the Finished Floor Elevation (FFE) on the plans for all structures.",
+    
+    "BB-0128": "Show the garage Finished Floor Elevation (FFE) on the plans.",
+    
+    "BB-0129": "Provide the basement elevation on the plans (Percentage of perimeter covered by adjacent turf above 1/2 of basement height. Min. = 50%.) Coverage to be calculated as follows: Linear Feet of basement perimeter covered / Linear Feet of total perimeter of basement, shown in percent. Walls interior of building footprint considered covered.",
+    
+    "BB-0130": "Provide detail of all proposed underground drainage infrastructure on the plans.",
+    
+    "BB-0131": "Provide bearings and distances on all property lines.",
+    
+    "BB-0132": "Temporary construction entrance: ASTM #1 stone with filter fabric underneath. Minimum dimensions: 12' W x 30' L (acceptable for single lot).",
 }
 
 
