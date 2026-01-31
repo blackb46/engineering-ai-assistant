@@ -11,7 +11,7 @@ Features:
 - Interactive Yes/No/N/A checklist
 - Automatic comment suggestions when "No" is selected
 - Custom notes support
-- Word document export of review comments
+- Word document export with full checklist and comments
 ==============================================================================
 """
 
@@ -35,8 +35,9 @@ from comments_database import COMMENTS, get_comment
 # Import python-docx for Word export
 try:
     from docx import Document
-    from docx.shared import Inches, Pt
+    from docx.shared import Inches, Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.style import WD_STYLE_TYPE
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
@@ -123,13 +124,17 @@ def generate_word_document():
     
     doc = Document()
     
-    # Title
-    title = doc.add_heading('Engineering Plan Review Comments', 0)
+    # =========================================================================
+    # TITLE
+    # =========================================================================
+    title = doc.add_heading('Engineering Plan Review', 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # Project info
+    # =========================================================================
+    # PROJECT INFORMATION
+    # =========================================================================
     doc.add_heading('Project Information', level=1)
-    info_table = doc.add_table(rows=4, cols=2)
+    info_table = doc.add_table(rows=5, cols=2)
     info_table.style = 'Table Grid'
     
     info_data = [
@@ -137,16 +142,20 @@ def generate_word_document():
         ('Permit Number:', st.session_state.wizard_permit_number or 'Not specified'),
         ('Address:', st.session_state.wizard_address or 'Not specified'),
         ('Reviewer:', st.session_state.wizard_reviewer or 'Not specified'),
+        ('Review Date:', datetime.now().strftime('%Y-%m-%d %H:%M')),
     ]
     
     for i, (label, value) in enumerate(info_data):
         info_table.rows[i].cells[0].text = label
         info_table.rows[i].cells[1].text = value
+        # Bold the labels
+        info_table.rows[i].cells[0].paragraphs[0].runs[0].bold = True
     
     doc.add_paragraph()
-    doc.add_paragraph(f"Review Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     
-    # Summary statistics
+    # =========================================================================
+    # SUMMARY STATISTICS
+    # =========================================================================
     doc.add_heading('Review Summary', level=1)
     
     yes_count = sum(1 for v in st.session_state.wizard_checklist_state.values() if v == "Yes")
@@ -154,77 +163,102 @@ def generate_word_document():
     na_count = sum(1 for v in st.session_state.wizard_checklist_state.values() if v == "N/A")
     total = yes_count + no_count + na_count
     
-    summary = doc.add_paragraph()
-    summary.add_run(f"Total Items Reviewed: {total}\n")
-    summary.add_run(f"Compliant (Yes): {yes_count}\n")
-    summary.add_run(f"Issues Found (No): {no_count}\n")
-    summary.add_run(f"Not Applicable: {na_count}")
+    summary_table = doc.add_table(rows=4, cols=2)
+    summary_table.style = 'Table Grid'
+    summary_data = [
+        ('Total Items Reviewed:', str(total)),
+        ('Compliant (Yes):', str(yes_count)),
+        ('Issues Found (No):', str(no_count)),
+        ('Not Applicable:', str(na_count)),
+    ]
+    for i, (label, value) in enumerate(summary_data):
+        summary_table.rows[i].cells[0].text = label
+        summary_table.rows[i].cells[1].text = value
     
-    # Comments section - only items marked "No"
-    doc.add_heading('Review Comments', level=1)
+    doc.add_paragraph()
     
-    if no_count == 0:
-        doc.add_paragraph("No issues found - all items compliant or not applicable.")
-    else:
-        doc.add_paragraph("The following items require attention:")
-        doc.add_paragraph()
+    # =========================================================================
+    # FULL CHECKLIST WITH STATUS AND COMMENTS
+    # =========================================================================
+    doc.add_heading('Plan Review Checklist', level=1)
+    
+    # Get the checklist for the current review type
+    checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
+    
+    for section_id, section_data in checklist.items():
+        # Section header
+        section_heading = doc.add_heading(section_data["name"], level=2)
         
-        # Get the checklist for the current review type
-        checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
-        comment_number = 1
-        
-        for section_id, section_data in checklist.items():
-            section_has_issues = False
-            section_comments = []
+        for item in section_data["items"]:
+            item_key = item["id"]
+            status = st.session_state.wizard_checklist_state.get(item_key, "Not Reviewed")
             
-            for item in section_data["items"]:
-                item_key = item["id"]
-                if st.session_state.wizard_checklist_state.get(item_key) == "No":
-                    section_has_issues = True
+            # Create paragraph for checklist item
+            para = doc.add_paragraph()
+            
+            # Add item ID and description
+            item_run = para.add_run(f"{item['id']} - {item['description']}")
+            item_run.bold = False
+            
+            # Add status on new line with color/bold
+            para.add_run("\n")
+            status_run = para.add_run(f"Status: {status}")
+            status_run.bold = True
+            
+            # Color code the status
+            if status == "Yes":
+                status_run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+            elif status == "No":
+                status_run.font.color.rgb = RGBColor(200, 0, 0)  # Red
+            elif status == "N/A":
+                status_run.font.color.rgb = RGBColor(128, 128, 128)  # Gray
+            else:
+                status_run.font.color.rgb = RGBColor(255, 165, 0)  # Orange for not reviewed
+            
+            # If "No", show comments
+            if status == "No":
+                selected = st.session_state.wizard_selected_comments.get(item_key, [])
+                custom_note = st.session_state.wizard_custom_notes.get(item_key, "")
+                
+                if selected or custom_note.strip():
+                    para.add_run("\n")
+                    comments_label = para.add_run("Comments:")
+                    comments_label.bold = True
+                    comments_label.font.color.rgb = RGBColor(0, 0, 128)  # Dark blue
                     
-                    # Get selected standard comments
-                    selected = st.session_state.wizard_selected_comments.get(item_key, [])
-                    custom_note = st.session_state.wizard_custom_notes.get(item_key, "")
-                    
+                    # Add each selected comment
                     for comment_id in selected:
                         comment_text = COMMENTS.get(comment_id, "")
                         if comment_text:
-                            section_comments.append({
-                                'item': item['description'],
-                                'comment_id': comment_id,
-                                'text': comment_text
-                            })
+                            comment_para = doc.add_paragraph()
+                            comment_para.paragraph_format.left_indent = Inches(0.5)
+                            comment_run = comment_para.add_run(f"• [{comment_id}] {comment_text}")
+                            comment_run.font.size = Pt(10)
                     
                     # Add custom note if provided
                     if custom_note.strip():
-                        section_comments.append({
-                            'item': item['description'],
-                            'comment_id': 'CUSTOM',
-                            'text': custom_note
-                        })
-            
-            # Add section header if it has issues
-            if section_has_issues and section_comments:
-                doc.add_heading(section_data["name"], level=2)
-                
-                for comment_data in section_comments:
-                    para = doc.add_paragraph()
-                    para.add_run(f"{comment_number}. ").bold = True
-                    para.add_run(f"[{comment_data['comment_id']}] ")
-                    para.add_run(comment_data['text'])
-                    comment_number += 1
-                
-                doc.add_paragraph()
+                        custom_para = doc.add_paragraph()
+                        custom_para.paragraph_format.left_indent = Inches(0.5)
+                        custom_run = custom_para.add_run(f"• [CUSTOM] {custom_note}")
+                        custom_run.font.size = Pt(10)
+                        custom_run.italic = True
+        
+        # Add space after each section
+        doc.add_paragraph()
     
-    # Comments ready to copy section
+    # =========================================================================
+    # COMMENTS FOR COPY/PASTE (Only "No" items)
+    # =========================================================================
     doc.add_page_break()
     doc.add_heading('Comments for Copy/Paste', level=1)
-    doc.add_paragraph("Use the comments below for Bluebeam or permit system:")
+    
+    intro_para = doc.add_paragraph()
+    intro_para.add_run("Use the comments below for Bluebeam or permit system. ").italic = True
+    intro_para.add_run("Only items marked 'No' with selected comments are included.").italic = True
     doc.add_paragraph()
     
     # Collect all comments in order
     all_comments = []
-    checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
     
     for section_id, section_data in checklist.items():
         for item in section_data["items"]:
@@ -241,11 +275,15 @@ def generate_word_document():
                 if custom_note.strip():
                     all_comments.append(custom_note)
     
-    for i, comment in enumerate(all_comments, 1):
-        para = doc.add_paragraph()
-        para.add_run(f"{i}. ").bold = True
-        para.add_run(comment)
-        doc.add_paragraph()  # Space between comments
+    if all_comments:
+        for i, comment in enumerate(all_comments, 1):
+            para = doc.add_paragraph()
+            num_run = para.add_run(f"{i}. ")
+            num_run.bold = True
+            para.add_run(comment)
+            doc.add_paragraph()  # Space between comments
+    else:
+        doc.add_paragraph("No comments to include - all items are compliant or N/A.")
     
     # Save to BytesIO
     buffer = BytesIO()
