@@ -1,12 +1,11 @@
 """
 ==============================================================================
-UPDATED Q&A MODE - With Google Sheets Feedback System
+UPDATED Q&A MODE - With Google Sheets Feedback System (FIXED)
 ==============================================================================
 File: pages/1_QA_Mode.py
 Purpose: Question answering with source citations and feedback popup
 
-When users click "Needs Improvement", a popup appears to collect feedback
-and sends the data to your Google Sheet for review.
+FIXED: Answer now stays visible when clicking feedback buttons
 ==============================================================================
 """
 
@@ -19,7 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent / "utils"))
 
 from rag_engine import RAGEngine
 from database import AuditLogger
-from google_sheets import log_flagged_response, test_connection
+from google_sheets import log_flagged_response
 
 st.set_page_config(page_title="Q&A Mode", page_icon="💬", layout="wide")
 
@@ -50,8 +49,8 @@ st.markdown("""
         font-size: 0.9em;
     }
     .feedback-popup {
-        background: #f8f9fa;
-        border: 2px solid #dc3545;
+        background: #fff5f5;
+        border: 2px solid #fc8181;
         border-radius: 8px;
         padding: 1.5rem;
         margin: 1rem 0;
@@ -80,15 +79,15 @@ def main():
     if 'audit_logger' not in st.session_state:
         st.session_state.audit_logger = AuditLogger()
     
-    # Initialize feedback state
+    # Initialize session state for preserving results
+    if 'current_result' not in st.session_state:
+        st.session_state.current_result = None
+    if 'current_question' not in st.session_state:
+        st.session_state.current_question = ""
     if 'show_feedback_form' not in st.session_state:
         st.session_state.show_feedback_form = False
     if 'feedback_submitted' not in st.session_state:
         st.session_state.feedback_submitted = False
-    if 'last_question' not in st.session_state:
-        st.session_state.last_question = ""
-    if 'last_answer' not in st.session_state:
-        st.session_state.last_answer = ""
 
     # Check system readiness
     if not st.session_state.rag_engine.is_ready():
@@ -96,7 +95,6 @@ def main():
         st.markdown("""
         - Vector database exists in `vectorstore/` folder
         - Claude API key is configured in secrets
-        - Manual file exists in `data/` folder
         """)
         if st.button("🏠 Return to Home"):
             st.switch_page("app.py")
@@ -113,23 +111,22 @@ def main():
         question = st.text_area(
             "Enter your engineering policy question:",
             height=100,
-            placeholder="e.g., What are the minimum pipe sizes for drainage systems?"
+            placeholder="e.g., What are the minimum pipe sizes for drainage systems?",
+            key="question_input"
         )
 
         col1a, col1b = st.columns([1, 1])
         with col1a:
             ask_button = st.button("🔍 Get Answer", type="primary")
         with col1b:
-            clear_button = st.button("🗑️ Clear")
+            if st.button("🗑️ Clear"):
+                st.session_state.current_result = None
+                st.session_state.current_question = ""
+                st.session_state.show_feedback_form = False
+                st.session_state.feedback_submitted = False
+                st.rerun()
 
-        if clear_button:
-            st.session_state.show_feedback_form = False
-            st.session_state.feedback_submitted = False
-            st.session_state.last_question = ""
-            st.session_state.last_answer = ""
-            st.rerun()
-
-        # Process question
+        # Process NEW question
         if ask_button and question.strip():
             # Reset feedback state for new question
             st.session_state.show_feedback_form = False
@@ -139,9 +136,9 @@ def main():
                 try:
                     result = st.session_state.rag_engine.query(question)
                     
-                    # Store for feedback
-                    st.session_state.last_question = question
-                    st.session_state.last_answer = result.get('answer', '')
+                    # Store in session state so it persists
+                    st.session_state.current_result = result
+                    st.session_state.current_question = question
 
                     # Log the query
                     st.session_state.audit_logger.log_query(
@@ -152,117 +149,122 @@ def main():
                         model_used=result.get('model_used', 'unknown')
                     )
 
-                    # Display results
-                    st.markdown("### 📝 Answer")
+                except Exception as e:
+                    st.error(f"❌ Error processing question: {str(e)}")
+                    st.session_state.current_result = None
+        
+        # =========================================================
+        # DISPLAY RESULTS (from session state - persists on rerun)
+        # =========================================================
+        if st.session_state.current_result is not None:
+            result = st.session_state.current_result
+            
+            # Show the question that was asked
+            st.markdown("---")
+            st.markdown(f"**Question:** {st.session_state.current_question}")
+            
+            # Display answer
+            st.markdown("### 📝 Answer")
+            st.markdown(f"""
+            <div class="answer-box">
+                {result.get('answer', 'No answer generated')}
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Display sources
+            if result.get('sources'):
+                st.markdown("### 📚 Sources")
+                for i, source in enumerate(result['sources'], 1):
                     st.markdown(f"""
-                    <div class="answer-box">
-                        {result.get('answer', 'No answer generated')}
+                    <div class="source-box">
+                        <strong>Source {i}:</strong> {source.get('source_file', 'Unknown')}
+                        (Chunk {source.get('chunk_id', 'N/A')})
+                        <br><small>Similarity: {source.get('similarity', 0):.3f}</small>
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # Display sources
-                    if result.get('sources'):
-                        st.markdown("### 📚 Sources")
-                        for i, source in enumerate(result['sources'], 1):
-                            st.markdown(f"""
-                            <div class="source-box">
-                                <strong>Source {i}:</strong> {source.get('source_file', 'Unknown')}
-                                (Chunk {source.get('chunk_id', 'N/A')})
-                                <br><small>Similarity: {source.get('similarity', 0):.3f}</small>
-                            </div>
-                            """, unsafe_allow_html=True)
+            # Performance metrics
+            st.markdown("### 📊 Query Statistics")
+            col1a, col1b, col1c = st.columns(3)
+            with col1a:
+                st.metric("Chunks Used", result.get('chunks_used', 0))
+            with col1b:
+                st.metric("Sources Found", len(result.get('sources', [])))
+            with col1c:
+                if 'token_usage' in result:
+                    total_tokens = result['token_usage'].get('input_tokens', 0) + result['token_usage'].get('output_tokens', 0)
+                    st.metric("Tokens Used", f"{total_tokens:,}")
 
-                    # Performance metrics
-                    st.markdown("### 📊 Query Statistics")
-                    col1a, col1b, col1c = st.columns(3)
-                    with col1a:
-                        st.metric("Chunks Used", result.get('chunks_used', 0))
-                    with col1b:
-                        st.metric("Sources Found", len(result.get('sources', [])))
-                    with col1c:
-                        if 'token_usage' in result:
-                            total_tokens = result['token_usage']['input_tokens'] + result['token_usage']['output_tokens']
-                            st.metric("Tokens Used", f"{total_tokens:,}")
-
-                    # =========================================================
-                    # FEEDBACK SECTION
-                    # =========================================================
-                    st.markdown("---")
-                    st.markdown("### 📢 Was this answer helpful?")
-                    
-                    col_fb1, col_fb2 = st.columns(2)
-
-                    with col_fb1:
-                        if st.button("👍 Yes, this helped!", use_container_width=True):
-                            st.success("Thank you for your feedback! 🎉")
-
-                    with col_fb2:
-                        if st.button("👎 Needs Improvement", use_container_width=True, type="secondary"):
-                            st.session_state.show_feedback_form = True
-                            st.session_state.feedback_submitted = False
-
-                except Exception as e:
-                    st.error(f"❌ Error processing question: {str(e)}")
-        
-        # =========================================================
-        # FEEDBACK POPUP FORM
-        # =========================================================
-        if st.session_state.show_feedback_form and not st.session_state.feedback_submitted:
+            # =========================================================
+            # FEEDBACK SECTION
+            # =========================================================
             st.markdown("---")
-            st.markdown("""
-            <div class="feedback-popup">
-                <h4>🚩 Report an Issue</h4>
-                <p>Help us improve! Tell us what was wrong with this response.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("### 📢 Was this answer helpful?")
             
-            with st.form(key="feedback_form"):
-                st.markdown("**Question asked:**")
-                st.info(st.session_state.last_question[:200] + "..." if len(st.session_state.last_question) > 200 else st.session_state.last_question)
+            # Only show buttons if feedback not yet submitted
+            if not st.session_state.feedback_submitted:
+                col_fb1, col_fb2 = st.columns(2)
+
+                with col_fb1:
+                    if st.button("👍 Yes, this helped!", use_container_width=True):
+                        st.session_state.feedback_submitted = True
+                        st.rerun()
+
+                with col_fb2:
+                    if st.button("👎 Needs Improvement", use_container_width=True, type="secondary"):
+                        st.session_state.show_feedback_form = True
+                        st.rerun()
+            
+            # =========================================================
+            # FEEDBACK FORM (shown when user clicks Needs Improvement)
+            # =========================================================
+            if st.session_state.show_feedback_form and not st.session_state.feedback_submitted:
+                st.markdown("""
+                <div class="feedback-popup">
+                    <h4>🚩 Report an Issue</h4>
+                    <p>Help us improve! Tell us what was wrong with this response.</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                st.markdown("**What was wrong with the response?** (optional but helpful)")
+                # Feedback text input
                 feedback_text = st.text_area(
-                    "Your feedback:",
+                    "What was wrong with the response? (optional but helpful)",
                     placeholder="Examples:\n- The answer was incorrect because...\n- It was missing information about...\n- The cited section doesn't actually say that...",
                     height=120,
-                    label_visibility="collapsed"
+                    key="feedback_text_input"
                 )
                 
                 col_submit1, col_submit2 = st.columns(2)
                 
                 with col_submit1:
-                    submit_feedback = st.form_submit_button("📤 Submit Feedback", type="primary", use_container_width=True)
+                    if st.button("📤 Submit Feedback", type="primary", use_container_width=True):
+                        # Send to Google Sheets
+                        success = log_flagged_response(
+                            question=st.session_state.current_question,
+                            ai_response=result.get('answer', ''),
+                            user_feedback=feedback_text
+                        )
+                        
+                        if success:
+                            st.session_state.feedback_submitted = True
+                            st.session_state.show_feedback_form = False
+                            st.rerun()
+                        else:
+                            st.error("❌ Could not submit feedback. Please try again.")
                 
                 with col_submit2:
-                    cancel_feedback = st.form_submit_button("❌ Cancel", use_container_width=True)
-                
-                if submit_feedback:
-                    # Send to Google Sheets
-                    success = log_flagged_response(
-                        question=st.session_state.last_question,
-                        ai_response=st.session_state.last_answer,
-                        user_feedback=feedback_text
-                    )
-                    
-                    if success:
-                        st.session_state.feedback_submitted = True
+                    if st.button("❌ Cancel", use_container_width=True):
                         st.session_state.show_feedback_form = False
                         st.rerun()
-                    else:
-                        st.error("❌ Could not submit feedback. Please try again.")
-                
-                if cancel_feedback:
-                    st.session_state.show_feedback_form = False
-                    st.rerun()
-        
-        # Show success message after feedback submitted
-        if st.session_state.feedback_submitted:
-            st.markdown("""
-            <div class="success-message">
-                ✅ <strong>Thank you for your feedback!</strong><br>
-                Your report has been submitted for review. We'll use this to improve the system.
-            </div>
-            """, unsafe_allow_html=True)
+            
+            # Show success message after feedback submitted
+            if st.session_state.feedback_submitted:
+                st.markdown("""
+                <div class="success-message">
+                    ✅ <strong>Thank you for your feedback!</strong><br>
+                    Your report has been submitted for review.
+                </div>
+                """, unsafe_allow_html=True)
 
     with col2:
         # Usage tips
@@ -270,8 +272,8 @@ def main():
         st.markdown("""
         **Ask specific questions:**
         - "What are the setback requirements?"
-        - "How do I calculate stormwater detention?"
-        - "What permits are needed for site development?"
+        - "What is the max encroachment into PUDE?"
+        - "What permits are needed for pools?"
 
         **The system will:**
         - Search the engineering manual
@@ -300,7 +302,7 @@ def main():
             else:
                 st.write("No recent queries yet.")
         except:
-            st.write("Query history will appear here after asking questions.")
+            st.write("Query history will appear here.")
 
     # Navigation
     st.markdown("---")
