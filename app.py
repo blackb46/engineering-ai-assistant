@@ -83,15 +83,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Custom Sidebar Navigation
+# Custom Sidebar Navigation (Admin Panel removed)
 st.sidebar.title("🧭 Navigation")
 st.sidebar.markdown("---")
 
-# Navigation buttons using page_link
+# Navigation buttons using page_link - only Dashboard, Q&A, and Wizard
 st.sidebar.page_link("app.py", label="🏡 Dashboard", icon=None)
 st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode", icon=None)
 st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode", icon=None)
-st.sidebar.page_link("pages/3_Admin.py", label="⚙️ Admin Panel", icon=None)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Engineering AI Assistant**")
@@ -105,48 +104,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# System Status Section
-st.subheader("📊 System Status")
-
-col1, col2, col3 = st.columns(3)
-
-# Check vector database
-vectorstore_path = Path("vectorstore")
-vector_ready = vectorstore_path.exists()
-
-# Check manual file
-data_path = Path("data")
-manual_ready = data_path.exists()
-
-# Check API (we'll assume it's configured if secrets exist)
-try:
-    api_ready = bool(st.secrets.get("CLAUDE_API_KEY"))
-except:
-    api_ready = False
-
-with col1:
-    if vector_ready:
-        st.success("✅ **Vector Database**\n\nReady for searching")
-    else:
-        st.warning("⚠️ **Vector Database**\n\nNot initialized")
-
-with col2:
-    if manual_ready:
-        st.success("✅ **Engineering Manual**\n\nAvailable for reference")
-    else:
-        st.warning("⚠️ **Engineering Manual**\n\nNot found")
-
-with col3:
-    if api_ready:
-        st.success("✅ **Claude API**\n\nConfigured and ready")
-    else:
-        st.error("❌ **Claude API**\n\nNot configured")
-
-# Mode Selection Section
-st.markdown("---")
+# Mode Selection Section (now at top, Admin Panel card removed)
 st.subheader("🎯 Choose Your Mode")
 
-col1, col2, col3 = st.columns(3)
+# Changed to 2 columns since Admin Panel is removed
+col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("### 💬 Q&A Mode")
@@ -174,20 +136,7 @@ with col2:
     if st.button("🚀 Launch Wizard Mode", key="wizard_btn"):
         st.switch_page("pages/2_Wizard_Mode.py")
 
-with col3:
-    st.markdown("### ⚙️ Admin Panel")
-    st.markdown("Monitor system usage, review flagged responses, and manage the system.")
-    st.markdown("""
-    **Features:**
-    - Query audit logs
-    - Response monitoring
-    - User feedback review
-    - System management
-    """)
-    if st.button("🚀 Launch Admin Panel", key="admin_btn"):
-        st.switch_page("pages/3_Admin.py")
-
-# Quick Start Guide
+# Quick Start Guide (remains as expander)
 st.markdown("---")
 with st.expander("📚 Quick Start Guide"):
     st.markdown("""
@@ -203,11 +152,6 @@ with st.expander("📚 Quick Start Guide"):
        - Follow the step-by-step checklist
        - Generate compliance documentation
     
-    3. **Admin Panel**: For supervisors and system administrators
-       - Monitor query history and usage patterns
-       - Review flagged responses
-       - Manage system settings
-    
     ### Tips for Best Results
     
     - Be specific in your questions
@@ -215,6 +159,42 @@ with st.expander("📚 Quick Start Guide"):
     - Use the feedback system to improve responses
     - Check multiple sources for complex questions
     """)
+
+# System Status Section (moved to bottom, now as expander for developer use)
+with st.expander("📊 System Status (Developer Info)"):
+    col1, col2, col3 = st.columns(3)
+    
+    # Check vector database
+    vectorstore_path = Path("vectorstore")
+    vector_ready = vectorstore_path.exists()
+    
+    # Check manual file
+    data_path = Path("data")
+    manual_ready = data_path.exists()
+    
+    # Check API (we'll assume it's configured if secrets exist)
+    try:
+        api_ready = bool(st.secrets.get("CLAUDE_API_KEY"))
+    except:
+        api_ready = False
+    
+    with col1:
+        if vector_ready:
+            st.success("✅ **Vector Database**\n\nReady for searching")
+        else:
+            st.warning("⚠️ **Vector Database**\n\nNot initialized")
+    
+    with col2:
+        if manual_ready:
+            st.success("✅ **Engineering Manual**\n\nAvailable for reference")
+        else:
+            st.warning("⚠️ **Engineering Manual**\n\nNot found")
+    
+    with col3:
+        if api_ready:
+            st.success("✅ **Claude API**\n\nConfigured and ready")
+        else:
+            st.error("❌ **Claude API**\n\nNot configured")
 
 # Footer
 st.markdown("---")
