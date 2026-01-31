@@ -1,3 +1,15 @@
+"""
+==============================================================================
+UPDATED Q&A MODE - With Google Sheets Feedback System
+==============================================================================
+File: pages/1_QA_Mode.py
+Purpose: Question answering with source citations and feedback popup
+
+When users click "Needs Improvement", a popup appears to collect feedback
+and sends the data to your Google Sheet for review.
+==============================================================================
+"""
+
 import streamlit as st
 import sys
 from pathlib import Path
@@ -7,202 +19,131 @@ sys.path.append(str(Path(__file__).parent.parent / "utils"))
 
 from rag_engine import RAGEngine
 from database import AuditLogger
+from google_sheets import log_flagged_response, test_connection
 
 st.set_page_config(page_title="Q&A Mode", page_icon="💬", layout="wide")
 
-# Hide default navigation and add custom styling
+# CSS styling for professional appearance
 st.markdown("""
 <style>
-    /* Hide default streamlit page navigation */
-    [data-testid="stSidebarNav"] {
-        display: none;
-    }
-    
-    .answer-box {
-        background: linear-gradient(135deg, #e8f4f8 0%, #d1ecf1 100%);
-        border: 2px solid #17a2b8;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-    }
-    .answer-label {
-        color: #0c5460;
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 0.5rem;
-    }
-    .answer-text {
-        color: #0c5460;
-        font-size: 1.2rem;
-        font-weight: 700;
-        line-height: 1.5;
-    }
-    .details-box {
+    .question-box {
         background: #f8f9fa;
         border: 1px solid #dee2e6;
-        border-left: 4px solid #6c757d;
         border-radius: 8px;
-        padding: 1.2rem;
+        padding: 1rem;
         margin: 1rem 0;
     }
-    .details-label {
-        color: #495057;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 0.75rem;
-    }
-    .details-text {
-        color: #212529;
-        font-size: 1rem;
-        line-height: 1.6;
-    }
-    .code-ref {
-        background: #fff3cd;
-        border: 1px solid #ffc107;
-        border-radius: 5px;
-        padding: 0.5rem 1rem;
-        margin-top: 1rem;
-        font-size: 0.9rem;
-        color: #856404;
+    .answer-box {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        font-size: 1.1em;
     }
     .source-box {
-        background: #fffbeb;
-        border: 1px solid #fde68a;
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
         border-radius: 8px;
-        padding: 0.75rem;
+        padding: 0.5rem;
         margin: 0.5rem 0;
         font-size: 0.9em;
     }
+    .feedback-popup {
+        background: #f8f9fa;
+        border: 2px solid #dc3545;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    .success-message {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #155724;
+    }
 </style>
 """, unsafe_allow_html=True)
-
-# Custom Sidebar Navigation
-st.sidebar.title("🏗️ Navigation")
-st.sidebar.markdown("---")
-st.sidebar.page_link("app.py", label="🏠 Dashboard")
-st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode")
-st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode")
-st.sidebar.page_link("pages/3_Admin.py", label="⚙️ Admin Panel")
-st.sidebar.markdown("---")
-
-
-def parse_response(response_text):
-    """Parse the structured response into components"""
-    result = {
-        'answer': '',
-        'details': '',
-        'code_reference': '',
-        'sources': ''
-    }
-    
-    text = response_text.strip()
-    
-    if 'ANSWER:' in text:
-        answer_start = text.find('ANSWER:') + len('ANSWER:')
-        answer_end = text.find('DETAILS:') if 'DETAILS:' in text else len(text)
-        result['answer'] = text[answer_start:answer_end].strip()
-    
-    if 'DETAILS:' in text:
-        details_start = text.find('DETAILS:') + len('DETAILS:')
-        details_end = text.find('CODE REFERENCE:') if 'CODE REFERENCE:' in text else text.find('SOURCES:') if 'SOURCES:' in text else len(text)
-        result['details'] = text[details_start:details_end].strip()
-    
-    if 'CODE REFERENCE:' in text:
-        code_start = text.find('CODE REFERENCE:') + len('CODE REFERENCE:')
-        code_end = text.find('SOURCES:') if 'SOURCES:' in text else len(text)
-        result['code_reference'] = text[code_start:code_end].strip()
-    
-    if 'SOURCES:' in text:
-        sources_start = text.find('SOURCES:') + len('SOURCES:')
-        result['sources'] = text[sources_start:].strip()
-    
-    return result
-
-
-def display_formatted_answer(response_text):
-    """Display the answer in a nicely formatted way"""
-    parsed = parse_response(response_text)
-    
-    if parsed['answer']:
-        st.markdown(f"""
-        <div class="answer-box">
-            <div class="answer-label">📋 Answer</div>
-            <div class="answer-text">{parsed['answer']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    if parsed['details'] or parsed['code_reference']:
-        details_html = ""
-        if parsed['details']:
-            details_lines = parsed['details'].split('\n')
-            details_formatted = ""
-            for line in details_lines:
-                line = line.strip()
-                if line.startswith('- ') or line.startswith('* '):
-                    details_formatted += f"<li>{line[2:]}</li>"
-                elif line:
-                    details_formatted += f"<li>{line}</li>"
-            if details_formatted:
-                details_html = f"<ul style='margin: 0; padding-left: 1.5rem;'>{details_formatted}</ul>"
-        
-        code_ref_html = ""
-        if parsed['code_reference'] and parsed['code_reference'].lower() not in ['n/a', 'see sources below', '']:
-            code_ref_html = f"""<div class="code-ref"><strong>📖 Code Reference:</strong> {parsed['code_reference']}</div>"""
-        
-        st.markdown(f"""
-        <div class="details-box">
-            <div class="details-label">📝 Supporting Details</div>
-            <div class="details-text">{details_html}</div>
-            {code_ref_html}
-        </div>
-        """, unsafe_allow_html=True)
 
 
 def main():
     """Main function for the Q&A Mode page"""
     st.title("💬 Engineering Q&A Mode")
     st.markdown("Ask questions about engineering policies and get accurate, cited answers.")
-    
+
+    # Initialize components
     if 'rag_engine' not in st.session_state:
         st.session_state.rag_engine = RAGEngine()
-    
+
     if 'audit_logger' not in st.session_state:
         st.session_state.audit_logger = AuditLogger()
     
+    # Initialize feedback state
+    if 'show_feedback_form' not in st.session_state:
+        st.session_state.show_feedback_form = False
+    if 'feedback_submitted' not in st.session_state:
+        st.session_state.feedback_submitted = False
+    if 'last_question' not in st.session_state:
+        st.session_state.last_question = ""
+    if 'last_answer' not in st.session_state:
+        st.session_state.last_answer = ""
+
+    # Check system readiness
     if not st.session_state.rag_engine.is_ready():
-        st.error("❌ System not ready. Please check configuration.")
+        st.error("❌ System not ready. Please check:")
+        st.markdown("""
+        - Vector database exists in `vectorstore/` folder
+        - Claude API key is configured in secrets
+        - Manual file exists in `data/` folder
+        """)
+        if st.button("🏠 Return to Home"):
+            st.switch_page("app.py")
         return
-    
+
     st.success("✅ Q&A system is ready!")
-    
+
+    # Main interface
     col1, col2 = st.columns([2, 1])
-    
+
     with col1:
+        # Question input
         st.subheader("❓ Ask Your Question")
         question = st.text_area(
             "Enter your engineering policy question:",
             height=100,
-            placeholder="e.g., What are the maximum slopes for driveways?"
+            placeholder="e.g., What are the minimum pipe sizes for drainage systems?"
         )
-        
+
         col1a, col1b = st.columns([1, 1])
         with col1a:
             ask_button = st.button("🔍 Get Answer", type="primary")
         with col1b:
             clear_button = st.button("🗑️ Clear")
-        
+
         if clear_button:
+            st.session_state.show_feedback_form = False
+            st.session_state.feedback_submitted = False
+            st.session_state.last_question = ""
+            st.session_state.last_answer = ""
             st.rerun()
-        
+
+        # Process question
         if ask_button and question.strip():
+            # Reset feedback state for new question
+            st.session_state.show_feedback_form = False
+            st.session_state.feedback_submitted = False
+            
             with st.spinner("Searching through engineering manual..."):
                 try:
                     result = st.session_state.rag_engine.query(question)
                     
+                    # Store for feedback
+                    st.session_state.last_question = question
+                    st.session_state.last_answer = result.get('answer', '')
+
+                    # Log the query
                     st.session_state.audit_logger.log_query(
                         question=question,
                         answer=result.get('answer', ''),
@@ -210,74 +151,169 @@ def main():
                         chunks_used=result.get('chunks_used', 0),
                         model_used=result.get('model_used', 'unknown')
                     )
-                    
-                    if result.get('chunks_used', 0) > 0:
-                        display_formatted_answer(result.get('answer', 'No answer generated'))
-                    else:
-                        st.warning(result.get('answer', 'No relevant information found.'))
-                    
+
+                    # Display results
+                    st.markdown("### 📝 Answer")
+                    st.markdown(f"""
+                    <div class="answer-box">
+                        {result.get('answer', 'No answer generated')}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # Display sources
                     if result.get('sources'):
                         st.markdown("### 📚 Sources")
                         for i, source in enumerate(result['sources'], 1):
                             st.markdown(f"""
                             <div class="source-box">
-                                <strong>Source {i}:</strong> {source.get('source_file', 'Unknown')} 
+                                <strong>Source {i}:</strong> {source.get('source_file', 'Unknown')}
                                 (Chunk {source.get('chunk_id', 'N/A')})
                                 <br><small>Similarity: {source.get('similarity', 0):.3f}</small>
                             </div>
                             """, unsafe_allow_html=True)
-                    
+
+                    # Performance metrics
                     st.markdown("### 📊 Query Statistics")
-                    col1a, col1b = st.columns(2)
+                    col1a, col1b, col1c = st.columns(3)
                     with col1a:
                         st.metric("Chunks Used", result.get('chunks_used', 0))
                     with col1b:
                         st.metric("Sources Found", len(result.get('sources', [])))
+                    with col1c:
+                        if 'token_usage' in result:
+                            total_tokens = result['token_usage']['input_tokens'] + result['token_usage']['output_tokens']
+                            st.metric("Tokens Used", f"{total_tokens:,}")
+
+                    # =========================================================
+                    # FEEDBACK SECTION
+                    # =========================================================
+                    st.markdown("---")
+                    st.markdown("### 📢 Was this answer helpful?")
                     
-                    st.markdown("### 📢 Feedback")
-                    col1a, col1b = st.columns(2)
-                    with col1a:
-                        if st.button("👍 Helpful"):
-                            st.session_state.audit_logger.flag_response(
-                                question=question, flag_type="positive", reason="Helpful"
-                            )
-                            st.success("Thanks for your feedback!")
-                    with col1b:
-                        if st.button("👎 Needs Improvement"):
-                            st.session_state.audit_logger.flag_response(
-                                question=question, flag_type="negative", reason="Needs improvement"
-                            )
-                            st.warning("Feedback recorded.")
-                    
+                    col_fb1, col_fb2 = st.columns(2)
+
+                    with col_fb1:
+                        if st.button("👍 Yes, this helped!", use_container_width=True):
+                            st.success("Thank you for your feedback! 🎉")
+
+                    with col_fb2:
+                        if st.button("👎 Needs Improvement", use_container_width=True, type="secondary"):
+                            st.session_state.show_feedback_form = True
+                            st.session_state.feedback_submitted = False
+
                 except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
-    
+                    st.error(f"❌ Error processing question: {str(e)}")
+        
+        # =========================================================
+        # FEEDBACK POPUP FORM
+        # =========================================================
+        if st.session_state.show_feedback_form and not st.session_state.feedback_submitted:
+            st.markdown("---")
+            st.markdown("""
+            <div class="feedback-popup">
+                <h4>🚩 Report an Issue</h4>
+                <p>Help us improve! Tell us what was wrong with this response.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.form(key="feedback_form"):
+                st.markdown("**Question asked:**")
+                st.info(st.session_state.last_question[:200] + "..." if len(st.session_state.last_question) > 200 else st.session_state.last_question)
+                
+                st.markdown("**What was wrong with the response?** (optional but helpful)")
+                feedback_text = st.text_area(
+                    "Your feedback:",
+                    placeholder="Examples:\n- The answer was incorrect because...\n- It was missing information about...\n- The cited section doesn't actually say that...",
+                    height=120,
+                    label_visibility="collapsed"
+                )
+                
+                col_submit1, col_submit2 = st.columns(2)
+                
+                with col_submit1:
+                    submit_feedback = st.form_submit_button("📤 Submit Feedback", type="primary", use_container_width=True)
+                
+                with col_submit2:
+                    cancel_feedback = st.form_submit_button("❌ Cancel", use_container_width=True)
+                
+                if submit_feedback:
+                    # Send to Google Sheets
+                    success = log_flagged_response(
+                        question=st.session_state.last_question,
+                        ai_response=st.session_state.last_answer,
+                        user_feedback=feedback_text
+                    )
+                    
+                    if success:
+                        st.session_state.feedback_submitted = True
+                        st.session_state.show_feedback_form = False
+                        st.rerun()
+                    else:
+                        st.error("❌ Could not submit feedback. Please try again.")
+                
+                if cancel_feedback:
+                    st.session_state.show_feedback_form = False
+                    st.rerun()
+        
+        # Show success message after feedback submitted
+        if st.session_state.feedback_submitted:
+            st.markdown("""
+            <div class="success-message">
+                ✅ <strong>Thank you for your feedback!</strong><br>
+                Your report has been submitted for review. We'll use this to improve the system.
+            </div>
+            """, unsafe_allow_html=True)
+
     with col2:
+        # Usage tips
         st.subheader("💡 Usage Tips")
         st.markdown("""
         **Ask specific questions:**
         - "What are the setback requirements?"
-        - "What is the maximum driveway grade?"
-        - "When is an as-built survey required?"
-        
+        - "How do I calculate stormwater detention?"
+        - "What permits are needed for site development?"
+
         **The system will:**
         - Search the engineering manual
         - Provide cited answers
         - Show source locations
-        - Abstain if no info found
+        - Abstain if no relevant info found
+
+        **Report issues that are:**
+        - Incorrect or misleading
+        - Missing important details
+        - Not relevant to your question
         """)
-        
+
+        # Recent queries (from session)
         st.subheader("🔍 Recent Queries")
         try:
-            recent = st.session_state.audit_logger.get_recent_queries(limit=5)
-            if recent:
-                for q in recent:
-                    with st.expander(f"🔎 {q['question'][:40]}..."):
-                        st.write(f"**Asked:** {q['timestamp']}")
+            recent_queries = st.session_state.audit_logger.get_recent_queries(limit=5)
+
+            if recent_queries:
+                for query in recent_queries[:5]:
+                    q_text = query.get('question', 'No question')
+                    q_preview = q_text[:40] + "..." if len(q_text) > 40 else q_text
+                    with st.expander(f"📝 {q_preview}"):
+                        st.write(f"**Asked:** {query.get('timestamp', 'Unknown')[:19]}")
+                        st.write(f"**Sources:** {query.get('sources_count', 0)}")
             else:
-                st.write("No recent queries.")
+                st.write("No recent queries yet.")
         except:
-            st.write("Query history will appear here.")
+            st.write("Query history will appear here after asking questions.")
+
+    # Navigation
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if st.button("🏠 Home"):
+            st.switch_page("app.py")
+    with col2:
+        if st.button("📋 Checklists"):
+            st.switch_page("pages/2_Wizard_Mode.py")
+    with col3:
+        if st.button("⚙️ Admin Panel"):
+            st.switch_page("pages/3_Admin.py")
 
 
 if __name__ == "__main__":
