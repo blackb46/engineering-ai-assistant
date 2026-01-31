@@ -1,8 +1,27 @@
-streamlit>=1.31.0
-anthropic>=0.18.1
-chromadb>=0.4.24
-sentence-transformers>=2.7.0
-python-docx>=1.1.2
-pandas>=2.2.2
-pathlib
-numpy>=1.24.0
+# ==============================================================================
+# Engineering AI Assistant - Python Dependencies
+# ==============================================================================
+# This file lists all Python packages needed to run the application.
+# Streamlit Cloud automatically installs these when deploying.
+# ==============================================================================
+
+# Core AI and Vector Database
+anthropic==0.18.1
+chromadb==0.4.24
+sentence-transformers==2.7.0
+
+# Web Framework
+streamlit==1.31.0
+
+# Document Processing
+python-docx==1.1.2
+
+# Data Handling
+pandas==2.2.2
+
+# HTTP Client (for API calls)
+httpx==0.27.0
+
+# Google Sheets Integration (for flagged response logging)
+gspread==6.0.0
+google-auth==2.27.0
