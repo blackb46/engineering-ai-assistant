@@ -59,12 +59,6 @@ CHECKLIST_SECTIONS = {
                 "comment_ids": ["BB-0024"],
                 "applies_to": []  # All
             },
-            {
-                "id": "0.5",
-                "description": "Resubmittal instructions provided",
-                "comment_ids": ["BB-0045"],
-                "applies_to": []  # All
-            },
         ]
     },
 
