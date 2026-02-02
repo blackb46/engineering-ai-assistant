@@ -12,6 +12,10 @@ Features:
 - Automatic comment suggestions when "No" is selected
 - Custom notes support
 - Word document export with full checklist and comments
+
+Update Log:
+- 2026-02-02: Added explicit text colors and !important to all CSS classes
+              to fix invisible text when browser is in dark mode.
 ==============================================================================
 """
 
@@ -44,43 +48,52 @@ except ImportError:
 
 st.set_page_config(page_title="Wizard Mode", page_icon="📋", layout="wide")
 
-# Custom CSS
+# =============================================================================
+# CUSTOM CSS - Dark Mode Safe
+# =============================================================================
+# Every class with a light background explicitly sets color: #1a1a2e (dark navy)
+# with !important so Streamlit's dark theme cannot override text to white.
+# =============================================================================
 st.markdown("""
 <style>
     .review-header {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
-        color: white;
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%) !important;
+        color: white !important;
         padding: 1.5rem;
         border-radius: 10px;
         margin-bottom: 1rem;
     }
     .section-header {
-        background: #f0f4f8;
+        background: #f0f4f8 !important;
+        color: #1a1a2e !important;
         padding: 0.75rem 1rem;
         border-left: 4px solid #1e3a5f;
         margin: 1rem 0 0.5rem 0;
         font-weight: bold;
     }
     .checklist-item {
-        background: #ffffff;
+        background: #ffffff !important;
+        color: #1a1a2e !important;
         border: 1px solid #e0e0e0;
         border-radius: 5px;
         padding: 0.75rem;
         margin: 0.5rem 0;
     }
     .comment-box {
-        background: #fff8e1;
+        background: #fff8e1 !important;
+        color: #1a1a2e !important;
         border: 1px solid #ffd54f;
         border-radius: 5px;
         padding: 0.75rem;
         margin: 0.5rem 0 0.5rem 1rem;
         font-size: 0.9em;
     }
-    .status-yes { color: #2e7d32; font-weight: bold; }
-    .status-no { color: #c62828; font-weight: bold; }
-    .status-na { color: #757575; font-weight: bold; }
+    .status-yes { color: #2e7d32 !important; font-weight: bold; }
+    .status-no { color: #c62828 !important; font-weight: bold; }
+    .status-na { color: #757575 !important; font-weight: bold; }
     .export-section {
-        background: #e8f5e9;
+        background: #e8f5e9 !important;
+        color: #1a1a2e !important;
         border: 1px solid #a5d6a7;
         border-radius: 8px;
         padding: 1rem;
