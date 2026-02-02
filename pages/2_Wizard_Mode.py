@@ -11,6 +11,7 @@ Features:
 - Interactive Yes/No/N/A radio buttons per checklist item
 - Automatic comment suggestions when "No" is selected
 - Custom notes support
+- Standalone resubmittal question before export (appends BB-0045 to end)
 - Word document export with full checklist and comments
 - LAMA CSV export for LAMA Comment Uploader chrome extension
 - Bluebeam BAX export with full styling (green text boxes, Helvetica 12pt)
@@ -21,10 +22,11 @@ Update Log:
 - 2026-02-02: Added custom sidebar navigation to replace default "app" label.
 - 2026-02-02: Added LAMA CSV and Bluebeam BAX export buttons.
 - 2026-02-02: Changed status dropdowns to horizontal radio buttons for speed.
-- 2026-02-02: Switched from XML MarkupSummary to BAX (Bluebeam Markup Archive)
-              format which carries full annotation styling in the Raw field
-              including green border/fill, 25% fill opacity, Helvetica 12pt,
-              and 0.75pt solid border.
+- 2026-02-02: Switched to BAX (Bluebeam Markup Archive) format with full
+              annotation styling in the Raw field.
+- 2026-02-02: Removed item 0.5 from checklist; added standalone resubmittal
+              question before Step 3. BB-0045 appended to end of comments
+              when "Yes" is selected.
 ==============================================================================
 """
 
@@ -63,10 +65,6 @@ st.set_page_config(page_title="Wizard Mode", page_icon="📋", layout="wide")
 
 # =============================================================================
 # CUSTOM CSS - Dark Mode Safe
-# =============================================================================
-# Every class with a light background explicitly sets color: #1a1a2e (dark navy)
-# with !important so Streamlit's dark theme cannot override text to white.
-# Radio button styling keeps items compact and inline.
 # =============================================================================
 st.markdown("""
 <style>
@@ -117,6 +115,14 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
     }
+    .resubmittal-box {
+        background: #e3f2fd !important;
+        color: #1a1a2e !important;
+        border: 2px solid #1976d2;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
     /* Compact radio buttons - reduce vertical padding */
     div[data-testid="stRadio"] > div {
         gap: 0.5rem;
@@ -153,6 +159,8 @@ def initialize_session_state():
         st.session_state.wizard_custom_notes = {}
     if 'wizard_started' not in st.session_state:
         st.session_state.wizard_started = False
+    if 'wizard_resubmittal' not in st.session_state:
+        st.session_state.wizard_resubmittal = "—"
 
 
 def reset_checklist():
@@ -160,17 +168,22 @@ def reset_checklist():
     st.session_state.wizard_checklist_state = {}
     st.session_state.wizard_selected_comments = {}
     st.session_state.wizard_custom_notes = {}
+    st.session_state.wizard_resubmittal = "—"
 
 
 def collect_all_comments():
     """
-    Collect all comments from checklist items marked 'No'.
+    Collect all comments from checklist items marked 'No', then append
+    the resubmittal comment (BB-0045) at the very end if the standalone
+    resubmittal question was answered 'Yes'.
+
     Returns a list of raw comment strings (no prefix codes).
     Used by all export functions to ensure consistent output.
     """
     checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
     all_comments = []
 
+    # Gather comments from all checklist items marked "No"
     for section_id, section_data in checklist.items():
         for item in section_data["items"]:
             item_key = item["id"]
@@ -185,6 +198,12 @@ def collect_all_comments():
 
                 if custom_note.strip():
                     all_comments.append(custom_note.strip())
+
+    # Append resubmittal comment at the very end if "Yes" was selected
+    if st.session_state.wizard_resubmittal == "Yes":
+        resubmittal_text = COMMENTS.get("BB-0045", "")
+        if resubmittal_text:
+            all_comments.append(resubmittal_text)
 
     return all_comments
 
@@ -220,7 +239,6 @@ def generate_word_document():
     for i, (label, value) in enumerate(info_data):
         info_table.rows[i].cells[0].text = label
         info_table.rows[i].cells[1].text = value
-        # Bold the labels
         info_table.rows[i].cells[0].paragraphs[0].runs[0].bold = True
     
     doc.add_paragraph()
@@ -235,13 +253,14 @@ def generate_word_document():
     na_count = sum(1 for v in st.session_state.wizard_checklist_state.values() if v == "N/A")
     total = yes_count + no_count + na_count
     
-    summary_table = doc.add_table(rows=4, cols=2)
+    summary_table = doc.add_table(rows=5, cols=2)
     summary_table.style = 'Table Grid'
     summary_data = [
         ('Total Items Reviewed:', str(total)),
         ('Compliant (Yes):', str(yes_count)),
         ('Issues Found (No):', str(no_count)),
         ('Not Applicable:', str(na_count)),
+        ('Resubmittal Comment:', st.session_state.wizard_resubmittal),
     ]
     for i, (label, value) in enumerate(summary_data):
         summary_table.rows[i].cells[0].text = label
@@ -254,40 +273,32 @@ def generate_word_document():
     # =========================================================================
     doc.add_heading('Plan Review Checklist', level=1)
     
-    # Get the checklist for the current review type
     checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
     
     for section_id, section_data in checklist.items():
-        # Section header
         section_heading = doc.add_heading(section_data["name"], level=2)
         
         for item in section_data["items"]:
             item_key = item["id"]
             status = st.session_state.wizard_checklist_state.get(item_key, "Not Reviewed")
             
-            # Create paragraph for checklist item
             para = doc.add_paragraph()
-            
-            # Add item ID and description
             item_run = para.add_run(f"{item['id']} - {item['description']}")
             item_run.bold = False
             
-            # Add status on new line with color/bold
             para.add_run("\n")
             status_run = para.add_run(f"Status: {status}")
             status_run.bold = True
             
-            # Color code the status
             if status == "Yes":
-                status_run.font.color.rgb = RGBColor(0, 128, 0)  # Green
+                status_run.font.color.rgb = RGBColor(0, 128, 0)
             elif status == "No":
-                status_run.font.color.rgb = RGBColor(200, 0, 0)  # Red
+                status_run.font.color.rgb = RGBColor(200, 0, 0)
             elif status == "N/A":
-                status_run.font.color.rgb = RGBColor(128, 128, 128)  # Gray
+                status_run.font.color.rgb = RGBColor(128, 128, 128)
             else:
-                status_run.font.color.rgb = RGBColor(255, 165, 0)  # Orange for not reviewed
+                status_run.font.color.rgb = RGBColor(255, 165, 0)
             
-            # If "No", show comments
             if status == "No":
                 selected = st.session_state.wizard_selected_comments.get(item_key, [])
                 custom_note = st.session_state.wizard_custom_notes.get(item_key, "")
@@ -296,9 +307,8 @@ def generate_word_document():
                     para.add_run("\n")
                     comments_label = para.add_run("Comments:")
                     comments_label.bold = True
-                    comments_label.font.color.rgb = RGBColor(0, 0, 128)  # Dark blue
+                    comments_label.font.color.rgb = RGBColor(0, 0, 128)
                     
-                    # Add each selected comment
                     for comment_id in selected:
                         comment_text = COMMENTS.get(comment_id, "")
                         if comment_text:
@@ -307,7 +317,6 @@ def generate_word_document():
                             comment_run = comment_para.add_run(f"• [{comment_id}] {comment_text}")
                             comment_run.font.size = Pt(10)
                     
-                    # Add custom note if provided
                     if custom_note.strip():
                         custom_para = doc.add_paragraph()
                         custom_para.paragraph_format.left_indent = Inches(0.5)
@@ -315,11 +324,20 @@ def generate_word_document():
                         custom_run.font.size = Pt(10)
                         custom_run.italic = True
         
-        # Add space after each section
         doc.add_paragraph()
     
     # =========================================================================
-    # COMMENTS FOR COPY/PASTE (Only "No" items)
+    # RESUBMITTAL STATUS IN DOCUMENT
+    # =========================================================================
+    if st.session_state.wizard_resubmittal == "Yes":
+        doc.add_heading('Resubmittal', level=2)
+        resub_para = doc.add_paragraph()
+        resub_run = resub_para.add_run("Standard resubmittal comment included (BB-0045)")
+        resub_run.bold = True
+        resub_run.font.color.rgb = RGBColor(0, 0, 128)
+    
+    # =========================================================================
+    # COMMENTS FOR COPY/PASTE (Only "No" items + resubmittal)
     # =========================================================================
     doc.add_page_break()
     doc.add_heading('Comments for Copy/Paste', level=1)
@@ -327,25 +345,11 @@ def generate_word_document():
     intro_para = doc.add_paragraph()
     intro_para.add_run("Use the comments below for Bluebeam or permit system. ").italic = True
     intro_para.add_run("Only items marked 'No' with selected comments are included.").italic = True
+    if st.session_state.wizard_resubmittal == "Yes":
+        intro_para.add_run(" Resubmittal comment appended at end.").italic = True
     doc.add_paragraph()
     
-    # Collect all comments in order
-    all_comments = []
-    
-    for section_id, section_data in checklist.items():
-        for item in section_data["items"]:
-            item_key = item["id"]
-            if st.session_state.wizard_checklist_state.get(item_key) == "No":
-                selected = st.session_state.wizard_selected_comments.get(item_key, [])
-                custom_note = st.session_state.wizard_custom_notes.get(item_key, "")
-                
-                for comment_id in selected:
-                    comment_text = COMMENTS.get(comment_id, "")
-                    if comment_text:
-                        all_comments.append(comment_text)
-                
-                if custom_note.strip():
-                    all_comments.append(custom_note)
+    all_comments = collect_all_comments()
     
     if all_comments:
         for i, comment in enumerate(all_comments, 1):
@@ -353,11 +357,10 @@ def generate_word_document():
             num_run = para.add_run(f"{i}. ")
             num_run.bold = True
             para.add_run(comment)
-            doc.add_paragraph()  # Space between comments
+            doc.add_paragraph()
     else:
         doc.add_paragraph("No comments to include - all items are compliant or N/A.")
     
-    # Save to BytesIO
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
@@ -367,16 +370,12 @@ def generate_word_document():
 # =============================================================================
 # LAMA CSV EXPORT
 # =============================================================================
-# Generates a single-column CSV with header "Comments" that plugs directly
-# into the LAMA Comment Uploader chrome extension. The extension's panel.js
-# parser looks for a column header matching "comments" (case-insensitive)
-# and reads each row as a comment to post to LAMA.
-# =============================================================================
 
 def generate_lama_csv():
     """
     Generate CSV for the LAMA Comment Uploader chrome extension.
     Format: Single column with header 'Comments', RFC 4180 quoting.
+    Includes resubmittal comment at end if selected.
     """
     comments = collect_all_comments()
     if not comments:
@@ -394,46 +393,14 @@ def generate_lama_csv():
 # =============================================================================
 # BLUEBEAM BAX EXPORT (Bluebeam Markup Archive)
 # =============================================================================
-# Generates a BAX file — Bluebeam Revu's native markup archive format.
-# Import via: Markup → Import → select .bax file
-#
-# Unlike the XML MarkupSummary format, BAX files contain a <Raw> field
-# with a zlib-compressed PDF annotation dictionary that carries FULL
-# visual styling. This means imported markups arrive with the exact
-# appearance from Kevin's toolchest:
-#
-#   Border color:   #008000 (green)  →  C[0 0.5019608 0]
-#   Fill color:     #008000 (green)  →  DA: 0 0.5019608 0 rg
-#   Fill opacity:   25%              →  FillOpacity 0.25
-#   Border width:   0.75 pt, solid   →  BS<</W 0.75/S/S>>
-#   Font:           Helvetica 12pt   →  /Helv 12 Tf
-#   Text color:     Black            →  color:#000000
-#   Line height:    13.8pt           →  line-height:13.8pt
-#   Alignment:      Left, Top        →  text-align:left
-#
-# The Raw field structure was reverse-engineered from Kevin's actual
-# Bluebeam Revu 21.8 export (Test.bax, 2026-02-02). Each Raw field
-# decompresses to a PDF annotation dictionary like:
-#   <</DA(...)/DS(...)/Rect[...]/Contents(...)/RC(...)/...>>
-#
-# Annotations are placed on page 1, stacked vertically with overflow
-# to a second column. User repositions them onto the correct sheets
-# after import.
-# =============================================================================
 
 def _generate_annotation_id():
-    """
-    Generate a 16-character uppercase letter ID matching Bluebeam's
-    annotation naming convention (e.g., 'QYFOJAMUAUFKGRPK').
-    """
+    """Generate a 16-character uppercase letter ID matching Bluebeam convention."""
     return ''.join(random.choices(string.ascii_uppercase, k=16))
 
 
 def _pdf_escape(text):
-    """
-    Escape special characters for PDF string literals inside ().
-    In PDF, only backslash, open-paren, and close-paren need escaping.
-    """
+    """Escape special characters for PDF string literals inside ()."""
     return (str(text)
             .replace("\\", "\\\\")
             .replace("(", "\\(")
@@ -453,54 +420,29 @@ def _xml_escape(text):
 def _build_annotation_raw(comment_text, reviewer, annot_id, rect, pdf_date):
     """
     Build the zlib-compressed, hex-encoded Raw field for a BAX annotation.
-
-    This constructs a PDF annotation dictionary string matching the exact
-    format produced by Bluebeam Revu 21.8, then compresses it with zlib
-    and returns the hex-encoded result.
-
-    Parameters:
-        comment_text: The plain text comment
-        reviewer:     Author name (from wizard reviewer dropdown)
-        annot_id:     16-char unique annotation ID
-        rect:         Tuple of (x1, y1, x2, y2) in PDF points
-        pdf_date:     Date string in PDF format: D:YYYYMMDDHHMMSS-06'00'
-
-    Returns:
-        Hex string of zlib-compressed PDF annotation dictionary
+    Contains the full PDF annotation dictionary with styling:
+      - Green (#008000) border and fill
+      - 25% fill opacity
+      - Helvetica 12pt black text
+      - 0.75pt solid border
     """
     x1, y1, x2, y2 = rect
-
-    # Escape text for PDF string literals (inside parentheses)
     pdf_text = _pdf_escape(comment_text)
     pdf_reviewer = _pdf_escape(reviewer)
-
-    # For RC (rich content): HTML-escape first, then PDF-escape the result
-    # because the HTML sits inside a PDF string literal
     html_text = (comment_text
                  .replace("&", "&amp;")
                  .replace("<", "&lt;")
                  .replace(">", "&gt;"))
     rc_text = _pdf_escape(html_text)
 
-    # -------------------------------------------------------------------------
-    # Build the PDF annotation dictionary
-    # This matches the exact structure from Kevin's Bluebeam Revu 21.8 export
-    # -------------------------------------------------------------------------
     raw_str = (
-        # Default Appearance: green fill (0 0.5019608 0), Helvetica 12pt
         '<</DA(0 0.5019608 0 rg /Helv 12 Tf)'
-        # Default Style: CSS-like styling for Bluebeam's text renderer
         '/DS(font: Helvetica 12pt; text-align:left; margin:0pt; '
         'line-height:13.8pt; color:#000000)'
-        # Temporary bounding box (matches Rect)
         f'/TempBBox[{x1} {y1} {x2} {y2}]'
-        # Fill opacity: 25% (green background at 25% transparency)
         '/FillOpacity 0.25'
-        # Title = Author name
         f'/T({pdf_reviewer})'
-        # Creation date in PDF format
         f'/CreationDate({pdf_date})'
-        # Rich Content: XHTML body with styled text
         '/RC(<?xml version="1.0"?>'
         '<body xmlns:xfa="http://www.xfa.org/schema/xfa-data/1.0/"'
         ' xfa:contentType="text/html"'
@@ -510,38 +452,25 @@ def _build_annotation_raw(comment_text, reviewer, annot_id, rect, pdf_date):
         'line-height:13.8pt; color:#000000"'
         ' xmlns="http://www.w3.org/1999/xhtml">'
         f'<p>{rc_text}</p></body>)'
-        # Subject category
         '/Subj(Engineering)'
-        # Unique annotation name
         f'/NM({annot_id})'
-        # Annotation subtype
         '/Subtype/FreeText'
-        # Rectangle coordinates [x1 y1 x2 y2] in PDF points
         f'/Rect[{x1} {y1} {x2} {y2}]'
-        # Plain text content (fallback for non-rich-text readers)
         f'/Contents({pdf_text})'
-        # Flags: 4 = Print (annotation prints with document)
         '/F 4'
-        # Color array: green (0, 0.5019608, 0) = #008000
         '/C[0 0.5019608 0]'
-        # Border style: 0.75pt solid
         '/BS<</W 0.75/S/S/Type/Border>>'
-        # Modified date
         f'/M({pdf_date})>>'
     )
 
-    # Compress with zlib (produces 789c... header matching Bluebeam's output)
     compressed = zlib.compress(raw_str.encode('utf-8'))
     return compressed.hex()
 
 
 def generate_bluebeam_bax():
     """
-    Generate a Bluebeam BAX (Markup Archive) file with fully styled
-    FreeText annotations matching Kevin's toolchest configuration.
-
-    Returns bytes of the complete BAX file (UTF-8 with BOM, CRLF endings)
-    or None if there are no comments to export.
+    Generate a Bluebeam BAX file with fully styled FreeText annotations.
+    Includes resubmittal comment at end if selected.
     """
     comments = collect_all_comments()
     if not comments:
@@ -549,42 +478,21 @@ def generate_bluebeam_bax():
 
     reviewer = st.session_state.wizard_reviewer or "Engineering"
     now = datetime.now()
-
-    # -------------------------------------------------------------------------
-    # Date formats
-    # Outer XML uses ISO 8601 with .0000000Z suffix (Bluebeam convention)
-    # Inner PDF uses D:YYYYMMDDHHMMSS-06'00' (Central Time offset)
-    # -------------------------------------------------------------------------
     iso_date = now.strftime("%Y-%m-%dT%H:%M:%S") + ".0000000Z"
     pdf_date = now.strftime("D:%Y%m%d%H%M%S") + "-06'00'"
 
-    # -------------------------------------------------------------------------
-    # Page and annotation layout
-    # All values in PDF points (1 inch = 72 points)
-    # US Letter: 612 x 792 points (8.5" x 11")
-    # -------------------------------------------------------------------------
-    page_width = 612
-    page_height = 792
-    box_width = 252     # 3.5 inches
-    box_height = 108    # 1.5 inches
-    margin = 36         # 0.5 inch margin from edges
-    gap = 10            # ~0.14 inch vertical gap between stacked boxes
-
-    # Start stacking from top of page, moving downward
-    # PDF origin is bottom-left, Y increases upward
+    page_width, page_height = 612, 792
+    box_width, box_height = 252, 108
+    margin, gap = 36, 10
     current_y_top = page_height - margin
     x1 = margin
 
-    # -------------------------------------------------------------------------
-    # Build annotation XML elements
-    # -------------------------------------------------------------------------
     annotation_blocks = []
 
     for i, comment in enumerate(comments):
-        y2 = current_y_top                 # Top of box
-        y1 = current_y_top - box_height    # Bottom of box
+        y2 = current_y_top
+        y1 = current_y_top - box_height
 
-        # If we've gone below the bottom margin, start a second column
         if y1 < margin and x1 == margin:
             x1 = margin + box_width + margin
             current_y_top = page_height - margin
@@ -593,14 +501,9 @@ def generate_bluebeam_bax():
 
         x2 = x1 + box_width
         rect = (x1, y1, x2, y2)
-
-        # Generate unique annotation ID
         annot_id = _generate_annotation_id()
-
-        # Build the compressed Raw field with full styling
         raw_hex = _build_annotation_raw(comment, reviewer, annot_id, rect, pdf_date)
 
-        # Build outer XML for this annotation
         annotation_xml = (
             '    <Annotation>\n'
             '      <Page>1</Page>\n'
@@ -622,9 +525,6 @@ def generate_bluebeam_bax():
         annotation_blocks.append(annotation_xml)
         current_y_top = y1 - gap
 
-    # -------------------------------------------------------------------------
-    # Assemble complete BAX document
-    # -------------------------------------------------------------------------
     annotations_str = '\n'.join(annotation_blocks)
 
     bax_content = (
@@ -639,7 +539,6 @@ def generate_bluebeam_bax():
         '</Document>'
     )
 
-    # Encode with UTF-8 BOM and CRLF line endings to match Bluebeam's format
     bax_crlf = bax_content.replace('\n', '\r\n')
     return b'\xef\xbb\xbf' + bax_crlf.encode('utf-8')
 
@@ -667,7 +566,6 @@ def main():
             key="review_type_select"
         )
         
-        # Check if review type changed
         if review_type and review_type != st.session_state.wizard_review_type:
             st.session_state.wizard_review_type = review_type
             reset_checklist()
@@ -699,7 +597,6 @@ def main():
         )
         st.session_state.wizard_reviewer = reviewer if reviewer else None
     
-    # Check if we can proceed
     if not st.session_state.wizard_review_type:
         st.info("👆 Select a review type to begin.")
         return
@@ -710,10 +607,8 @@ def main():
     st.markdown("---")
     st.subheader(f"📋 Step 2: {st.session_state.wizard_review_type} Checklist")
     
-    # Get applicable checklist
     checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
     
-    # Calculate progress
     total_items = sum(len(section["items"]) for section in checklist.values())
     completed_items = len(st.session_state.wizard_checklist_state)
     
@@ -727,18 +622,12 @@ def main():
         for item in section_data["items"]:
             item_key = item["id"]
             
-            # Create columns: description on left, radio buttons on right
             col1, col2 = st.columns([3, 1])
             
             with col1:
                 st.markdown(f"**{item['id']}** - {item['description']}")
             
             with col2:
-                # -------------------------------------------------------
-                # Horizontal radio buttons instead of dropdown
-                # Options: "—" (not yet reviewed), "Yes", "No", "N/A"
-                # The "—" option acts as a blank/unreviewed placeholder
-                # -------------------------------------------------------
                 current_status = st.session_state.wizard_checklist_state.get(item_key, "—")
                 
                 status = st.radio(
@@ -750,7 +639,6 @@ def main():
                     label_visibility="collapsed"
                 )
                 
-                # Update session state based on selection
                 if status and status != "—":
                     st.session_state.wizard_checklist_state[item_key] = status
                 elif item_key in st.session_state.wizard_checklist_state:
@@ -762,21 +650,15 @@ def main():
                     st.markdown('<div class="comment-box">', unsafe_allow_html=True)
                     st.markdown("**📝 Select applicable comments:**")
                     
-                    # Get available comments for this item
                     comment_ids = item.get("comment_ids", [])
                     
                     if comment_ids:
-                        # Initialize selected comments if not exists
                         if item_key not in st.session_state.wizard_selected_comments:
                             st.session_state.wizard_selected_comments[item_key] = []
                         
-                        # Show each comment with checkbox
                         for comment_id in comment_ids:
                             comment_text = COMMENTS.get(comment_id, "Comment not found")
-                            
-                            # Truncate long comments for display
                             display_text = comment_text[:150] + "..." if len(comment_text) > 150 else comment_text
-                            
                             is_selected = comment_id in st.session_state.wizard_selected_comments[item_key]
                             
                             if st.checkbox(
@@ -790,12 +672,10 @@ def main():
                                 if comment_id in st.session_state.wizard_selected_comments[item_key]:
                                     st.session_state.wizard_selected_comments[item_key].remove(comment_id)
                             
-                            # Show full comment in expander if long
                             if len(comment_text) > 150:
                                 with st.expander("View full comment"):
                                     st.write(comment_text)
                     
-                    # Custom notes field
                     st.markdown("**✏️ Custom notes (optional):**")
                     custom_note = st.text_area(
                         "Custom note",
@@ -812,15 +692,45 @@ def main():
             st.markdown("---")
     
     # =========================================================================
+    # STANDALONE RESUBMITTAL QUESTION
+    # Positioned between the checklist and Step 3, inside its own styled box
+    # =========================================================================
+    st.markdown('<div class="resubmittal-box">', unsafe_allow_html=True)
+    
+    resub_col1, resub_col2 = st.columns([3, 1])
+    
+    with resub_col1:
+        st.markdown("**📬 Add standard resubmittal comment?**")
+        # Show preview of what BB-0045 says
+        resub_text = COMMENTS.get("BB-0045", "")
+        if resub_text:
+            st.caption(f'BB-0045: "{resub_text}"')
+    
+    with resub_col2:
+        resubmittal = st.radio(
+            "Resubmittal",
+            options=["—", "Yes", "N/A"],
+            index=["—", "Yes", "N/A"].index(st.session_state.wizard_resubmittal) if st.session_state.wizard_resubmittal in ["—", "Yes", "N/A"] else 0,
+            key="resubmittal_radio",
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+        st.session_state.wizard_resubmittal = resubmittal
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # =========================================================================
     # STEP 3: REVIEW SUMMARY & EXPORT
     # =========================================================================
     st.markdown("---")
     st.subheader("📊 Step 3: Review Summary & Export")
     
-    # Summary statistics
     yes_count = sum(1 for v in st.session_state.wizard_checklist_state.values() if v == "Yes")
     no_count = sum(1 for v in st.session_state.wizard_checklist_state.values() if v == "No")
     na_count = sum(1 for v in st.session_state.wizard_checklist_state.values() if v == "N/A")
+    
+    # Include resubmittal in the "has comments" logic
+    has_comments = no_count > 0 or st.session_state.wizard_resubmittal == "Yes"
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -836,14 +746,17 @@ def main():
     st.markdown('<div class="export-section">', unsafe_allow_html=True)
     st.markdown("### 📤 Export Review")
     
-    if no_count == 0 and (yes_count + na_count) > 0:
+    if not has_comments and (yes_count + na_count) > 0:
         st.success("✅ No issues found! All reviewed items are compliant.")
-    elif no_count > 0:
-        st.warning(f"⚠️ {no_count} issue(s) found that require comments.")
+    elif has_comments:
+        comment_parts = []
+        if no_count > 0:
+            comment_parts.append(f"{no_count} issue(s) found")
+        if st.session_state.wizard_resubmittal == "Yes":
+            comment_parts.append("resubmittal comment included")
+        st.warning(f"⚠️ {' + '.join(comment_parts)}.")
     
-    # -----------------------------------------------------------------
     # Row 1: Word Document + Clear Review
-    # -----------------------------------------------------------------
     col1, col2 = st.columns(2)
     
     with col1:
@@ -875,11 +788,8 @@ def main():
             st.session_state.wizard_reviewer = None
             st.rerun()
 
-    # -----------------------------------------------------------------
-    # Row 2: LAMA CSV + Bluebeam BAX
-    # Only shown when there are comments to export (no_count > 0)
-    # -----------------------------------------------------------------
-    if no_count > 0:
+    # Row 2: LAMA CSV + Bluebeam BAX (shown when there are any comments)
+    if has_comments:
         st.markdown("#### 📊 Extract Comments")
 
         permit_num = st.session_state.wizard_permit_number or "review"
@@ -914,12 +824,13 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Quick copy section for comments
-    if no_count > 0:
+    if has_comments:
         st.markdown("---")
         st.subheader("📋 Quick Copy - All Comments")
         st.caption("Copy these comments directly into Bluebeam or your permit system:")
         
         all_comments = []
+        checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
         for section_id, section_data in checklist.items():
             for item in section_data["items"]:
                 item_key = item["id"]
@@ -935,6 +846,12 @@ def main():
                     if custom_note.strip():
                         all_comments.append(f"[CUSTOM] {custom_note}")
         
+        # Append resubmittal at the end
+        if st.session_state.wizard_resubmittal == "Yes":
+            resub_text = COMMENTS.get("BB-0045", "")
+            if resub_text:
+                all_comments.append(f"[BB-0045] {resub_text}")
+        
         if all_comments:
             comments_text = "\n\n".join(f"{i+1}. {c}" for i, c in enumerate(all_comments))
             st.text_area(
@@ -944,7 +861,7 @@ def main():
                 label_visibility="collapsed"
             )
     
-    # Navigation (Admin Panel removed - now 2 columns)
+    # Navigation
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
