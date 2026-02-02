@@ -13,20 +13,27 @@ Features:
 - Custom notes support
 - Word document export with full checklist and comments
 - LAMA CSV export for LAMA Comment Uploader chrome extension
-- Bluebeam XFDF export for direct markup import with styled text boxes
+- Bluebeam BAX export with full styling (green text boxes, Helvetica 12pt)
 
 Update Log:
 - 2026-02-02: Added explicit text colors and !important to all CSS classes
               to fix invisible text when browser is in dark mode.
 - 2026-02-02: Added custom sidebar navigation to replace default "app" label.
-- 2026-02-02: Added LAMA CSV and Bluebeam XFDF export buttons.
+- 2026-02-02: Added LAMA CSV and Bluebeam BAX export buttons.
 - 2026-02-02: Changed status dropdowns to horizontal radio buttons for speed.
+- 2026-02-02: Switched from XML MarkupSummary to BAX (Bluebeam Markup Archive)
+              format which carries full annotation styling in the Raw field
+              including green border/fill, 25% fill opacity, Helvetica 12pt,
+              and 0.75pt solid border.
 ==============================================================================
 """
 
 import streamlit as st
 import sys
 import csv
+import zlib
+import random
+import string
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO, StringIO
@@ -385,29 +392,156 @@ def generate_lama_csv():
 
 
 # =============================================================================
-# BLUEBEAM XFDF EXPORT
+# BLUEBEAM BAX EXPORT (Bluebeam Markup Archive)
 # =============================================================================
-# Generates an XFDF (XML Forms Data Format) file that Bluebeam Revu can
-# import via Markup -> Import. Each comment becomes a FreeText annotation
-# (text box) with the following styling to match Kevin's toolchest:
+# Generates a BAX file — Bluebeam Revu's native markup archive format.
+# Import via: Markup → Import → select .bax file
 #
-#   Border color:   #008000 (dark green)
-#   Fill color:     #008000 (dark green) at 25% opacity
-#   Border width:   0.75 pt, solid
-#   Font:           Helvetica 12pt, black, left-aligned, top-aligned
-#   Box size:       3.5" wide x 1.5" tall (252 x 108 points)
-#   Opacity:        100% border, 25% fill
+# Unlike the XML MarkupSummary format, BAX files contain a <Raw> field
+# with a zlib-compressed PDF annotation dictionary that carries FULL
+# visual styling. This means imported markups arrive with the exact
+# appearance from Kevin's toolchest:
 #
-# Annotations are stacked vertically on page 1 starting from the top.
-# The user can reposition them onto the correct plan sheets after import.
+#   Border color:   #008000 (green)  →  C[0 0.5019608 0]
+#   Fill color:     #008000 (green)  →  DA: 0 0.5019608 0 rg
+#   Fill opacity:   25%              →  FillOpacity 0.25
+#   Border width:   0.75 pt, solid   →  BS<</W 0.75/S/S>>
+#   Font:           Helvetica 12pt   →  /Helv 12 Tf
+#   Text color:     Black            →  color:#000000
+#   Line height:    13.8pt           →  line-height:13.8pt
+#   Alignment:      Left, Top        →  text-align:left
 #
-# Tested against: Bluebeam Revu x64 Complete v21.8 (Engine 21.8.0.13613)
+# The Raw field structure was reverse-engineered from Kevin's actual
+# Bluebeam Revu 21.8 export (Test.bax, 2026-02-02). Each Raw field
+# decompresses to a PDF annotation dictionary like:
+#   <</DA(...)/DS(...)/Rect[...]/Contents(...)/RC(...)/...>>
+#
+# Annotations are placed on page 1, stacked vertically with overflow
+# to a second column. User repositions them onto the correct sheets
+# after import.
 # =============================================================================
 
-def generate_bluebeam_xfdf():
+def _generate_annotation_id():
     """
-    Generate XFDF file for Bluebeam Revu markup import.
-    Creates styled FreeText annotations matching toolchest format.
+    Generate a 16-character uppercase letter ID matching Bluebeam's
+    annotation naming convention (e.g., 'QYFOJAMUAUFKGRPK').
+    """
+    return ''.join(random.choices(string.ascii_uppercase, k=16))
+
+
+def _pdf_escape(text):
+    """
+    Escape special characters for PDF string literals inside ().
+    In PDF, only backslash, open-paren, and close-paren need escaping.
+    """
+    return (str(text)
+            .replace("\\", "\\\\")
+            .replace("(", "\\(")
+            .replace(")", "\\)"))
+
+
+def _xml_escape(text):
+    """Escape special characters for XML text content."""
+    return (str(text)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&apos;"))
+
+
+def _build_annotation_raw(comment_text, reviewer, annot_id, rect, pdf_date):
+    """
+    Build the zlib-compressed, hex-encoded Raw field for a BAX annotation.
+
+    This constructs a PDF annotation dictionary string matching the exact
+    format produced by Bluebeam Revu 21.8, then compresses it with zlib
+    and returns the hex-encoded result.
+
+    Parameters:
+        comment_text: The plain text comment
+        reviewer:     Author name (from wizard reviewer dropdown)
+        annot_id:     16-char unique annotation ID
+        rect:         Tuple of (x1, y1, x2, y2) in PDF points
+        pdf_date:     Date string in PDF format: D:YYYYMMDDHHMMSS-06'00'
+
+    Returns:
+        Hex string of zlib-compressed PDF annotation dictionary
+    """
+    x1, y1, x2, y2 = rect
+
+    # Escape text for PDF string literals (inside parentheses)
+    pdf_text = _pdf_escape(comment_text)
+    pdf_reviewer = _pdf_escape(reviewer)
+
+    # For RC (rich content): HTML-escape first, then PDF-escape the result
+    # because the HTML sits inside a PDF string literal
+    html_text = (comment_text
+                 .replace("&", "&amp;")
+                 .replace("<", "&lt;")
+                 .replace(">", "&gt;"))
+    rc_text = _pdf_escape(html_text)
+
+    # -------------------------------------------------------------------------
+    # Build the PDF annotation dictionary
+    # This matches the exact structure from Kevin's Bluebeam Revu 21.8 export
+    # -------------------------------------------------------------------------
+    raw_str = (
+        # Default Appearance: green fill (0 0.5019608 0), Helvetica 12pt
+        '<</DA(0 0.5019608 0 rg /Helv 12 Tf)'
+        # Default Style: CSS-like styling for Bluebeam's text renderer
+        '/DS(font: Helvetica 12pt; text-align:left; margin:0pt; '
+        'line-height:13.8pt; color:#000000)'
+        # Temporary bounding box (matches Rect)
+        f'/TempBBox[{x1} {y1} {x2} {y2}]'
+        # Fill opacity: 25% (green background at 25% transparency)
+        '/FillOpacity 0.25'
+        # Title = Author name
+        f'/T({pdf_reviewer})'
+        # Creation date in PDF format
+        f'/CreationDate({pdf_date})'
+        # Rich Content: XHTML body with styled text
+        '/RC(<?xml version="1.0"?>'
+        '<body xmlns:xfa="http://www.xfa.org/schema/xfa-data/1.0/"'
+        ' xfa:contentType="text/html"'
+        ' xfa:APIVersion="BluebeamPDFRevu:2018"'
+        ' xfa:spec="2.2.0"'
+        ' style="font: Helvetica 12pt; text-align:left; margin:0pt; '
+        'line-height:13.8pt; color:#000000"'
+        ' xmlns="http://www.w3.org/1999/xhtml">'
+        f'<p>{rc_text}</p></body>)'
+        # Subject category
+        '/Subj(Engineering)'
+        # Unique annotation name
+        f'/NM({annot_id})'
+        # Annotation subtype
+        '/Subtype/FreeText'
+        # Rectangle coordinates [x1 y1 x2 y2] in PDF points
+        f'/Rect[{x1} {y1} {x2} {y2}]'
+        # Plain text content (fallback for non-rich-text readers)
+        f'/Contents({pdf_text})'
+        # Flags: 4 = Print (annotation prints with document)
+        '/F 4'
+        # Color array: green (0, 0.5019608, 0) = #008000
+        '/C[0 0.5019608 0]'
+        # Border style: 0.75pt solid
+        '/BS<</W 0.75/S/S/Type/Border>>'
+        # Modified date
+        f'/M({pdf_date})>>'
+    )
+
+    # Compress with zlib (produces 789c... header matching Bluebeam's output)
+    compressed = zlib.compress(raw_str.encode('utf-8'))
+    return compressed.hex()
+
+
+def generate_bluebeam_bax():
+    """
+    Generate a Bluebeam BAX (Markup Archive) file with fully styled
+    FreeText annotations matching Kevin's toolchest configuration.
+
+    Returns bytes of the complete BAX file (UTF-8 with BOM, CRLF endings)
+    or None if there are no comments to export.
     """
     comments = collect_all_comments()
     if not comments:
@@ -416,85 +550,98 @@ def generate_bluebeam_xfdf():
     reviewer = st.session_state.wizard_reviewer or "Engineering"
     now = datetime.now()
 
-    # PDF date format: D:YYYYMMDDHHmmSS
-    date_pdf = now.strftime("D:%Y%m%d%H%M%S")
+    # -------------------------------------------------------------------------
+    # Date formats
+    # Outer XML uses ISO 8601 with .0000000Z suffix (Bluebeam convention)
+    # Inner PDF uses D:YYYYMMDDHHMMSS-06'00' (Central Time offset)
+    # -------------------------------------------------------------------------
+    iso_date = now.strftime("%Y-%m-%dT%H:%M:%S") + ".0000000Z"
+    pdf_date = now.strftime("D:%Y%m%d%H%M%S") + "-06'00'"
 
     # -------------------------------------------------------------------------
-    # Page and box dimensions (letter size: 8.5" x 11")
+    # Page and annotation layout
     # All values in PDF points (1 inch = 72 points)
-    # PDF coordinate origin is bottom-left, Y increases upward
+    # US Letter: 612 x 792 points (8.5" x 11")
     # -------------------------------------------------------------------------
-    page_height = 792   # 11 inches
-    margin = 36         # 0.5 inch margin from edges
+    page_width = 612
+    page_height = 792
     box_width = 252     # 3.5 inches
     box_height = 108    # 1.5 inches
-    gap = 10            # ~0.14 inch gap between stacked boxes
-
-    # Color: #008000 = RGB(0, 128, 0) = normalized (0, 0.50196, 0)
-    # XFDF uses comma-separated RGB values in 0-1 range
-    color_rgb = "0,0.50196,0"
-
-    # -------------------------------------------------------------------------
-    # Build XFDF document
-    # -------------------------------------------------------------------------
-    lines = []
-    lines.append('<?xml version="1.0" encoding="UTF-8"?>')
-    lines.append('<xfdf xmlns="http://ns.adobe.com/xfdf/" xml:space="preserve">')
-    lines.append('  <annots>')
+    margin = 36         # 0.5 inch margin from edges
+    gap = 10            # ~0.14 inch vertical gap between stacked boxes
 
     # Start stacking from top of page, moving downward
-    current_y_top = page_height - margin  # Top edge of first box
-    x1 = margin                            # Left edge
+    # PDF origin is bottom-left, Y increases upward
+    current_y_top = page_height - margin
+    x1 = margin
+
+    # -------------------------------------------------------------------------
+    # Build annotation XML elements
+    # -------------------------------------------------------------------------
+    annotation_blocks = []
 
     for i, comment in enumerate(comments):
-        y2 = current_y_top                 # Top of box (PDF coords)
+        y2 = current_y_top                 # Top of box
         y1 = current_y_top - box_height    # Bottom of box
 
         # If we've gone below the bottom margin, start a second column
         if y1 < margin and x1 == margin:
-            x1 = margin + box_width + margin  # Shift to right column
+            x1 = margin + box_width + margin
             current_y_top = page_height - margin
             y2 = current_y_top
             y1 = current_y_top - box_height
 
         x2 = x1 + box_width
+        rect = (x1, y1, x2, y2)
 
-        # Escape XML special characters in comment text
-        escaped = (comment
-                   .replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;")
-                   .replace('"', "&quot;")
-                   .replace("'", "&apos;"))
+        # Generate unique annotation ID
+        annot_id = _generate_annotation_id()
 
-        # Each FreeText annotation represents one styled comment text box
-        lines.append('    <freetext')
-        lines.append('      page="0"')
-        lines.append(f'      rect="{x1:.1f},{y1:.1f},{x2:.1f},{y2:.1f}"')
-        lines.append('      flags="print"')
-        lines.append('      subject="Engineering"')
-        lines.append(f'      title="{reviewer}"')
-        lines.append(f'      color="{color_rgb}"')
-        lines.append(f'      interior-color="{color_rgb}"')
-        lines.append('      width="0.75"')
-        lines.append('      opacity="1"')
-        lines.append(f'      creationdate="{date_pdf}"')
-        lines.append(f'      date="{date_pdf}"')
-        lines.append('      intent="FreeTextTypewriter">')
-        lines.append(f'      <contents>{escaped}</contents>')
-        # defaultappearance: "0 g" = black text color, "/Helv 12 Tf" = Helvetica 12pt
-        lines.append('      <defaultappearance>0 g /Helv 12 Tf</defaultappearance>')
-        # defaultstyle: CSS-like properties for Bluebeam rendering
-        lines.append('      <defaultstyle>font:Helvetica 12.0pt; text-align:left; text-valign:top; color:#000000; margin:0</defaultstyle>')
-        lines.append('    </freetext>')
+        # Build the compressed Raw field with full styling
+        raw_hex = _build_annotation_raw(comment, reviewer, annot_id, rect, pdf_date)
 
-        # Move down for next box
+        # Build outer XML for this annotation
+        annotation_xml = (
+            '    <Annotation>\n'
+            '      <Page>1</Page>\n'
+            f'      <Contents>{_xml_escape(comment)}</Contents>\n'
+            f'      <ModDate>{iso_date}</ModDate>\n'
+            '      <Color>#008000</Color>\n'
+            '      <Type>FreeText</Type>\n'
+            f'      <ID>{annot_id}</ID>\n'
+            '      <TypeInternal>Bluebeam.PDF.Annotations.AnnotationFreeText'
+            '</TypeInternal>\n'
+            f'      <Raw>{raw_hex}</Raw>\n'
+            f'      <Index>{i}</Index>\n'
+            '      <Subject>Engineering</Subject>\n'
+            f'      <CreationDate>{iso_date}</CreationDate>\n'
+            f'      <Author>{_xml_escape(reviewer)}</Author>\n'
+            '    </Annotation>'
+        )
+
+        annotation_blocks.append(annotation_xml)
         current_y_top = y1 - gap
 
-    lines.append('  </annots>')
-    lines.append('</xfdf>')
+    # -------------------------------------------------------------------------
+    # Assemble complete BAX document
+    # -------------------------------------------------------------------------
+    annotations_str = '\n'.join(annotation_blocks)
 
-    return '\n'.join(lines).encode('utf-8')
+    bax_content = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Document Version="1">\n'
+        '  <Page Index="0">\n'
+        '    <Label>1</Label>\n'
+        f'    <Width>{page_width}</Width>\n'
+        f'    <Height>{page_height}</Height>\n'
+        f'{annotations_str}\n'
+        '  </Page>\n'
+        '</Document>'
+    )
+
+    # Encode with UTF-8 BOM and CRLF line endings to match Bluebeam's format
+    bax_crlf = bax_content.replace('\n', '\r\n')
+    return b'\xef\xbb\xbf' + bax_crlf.encode('utf-8')
 
 
 def main():
@@ -729,7 +876,7 @@ def main():
             st.rerun()
 
     # -----------------------------------------------------------------
-    # Row 2: LAMA CSV + Bluebeam XFDF
+    # Row 2: LAMA CSV + Bluebeam BAX
     # Only shown when there are comments to export (no_count > 0)
     # -----------------------------------------------------------------
     if no_count > 0:
@@ -744,7 +891,7 @@ def main():
             lama_data = generate_lama_csv()
             if lama_data:
                 st.download_button(
-                    label="📥 Extract Comments to LAMA",
+                    label="📥 Create CSV File of Comments",
                     data=lama_data,
                     file_name=f"LAMA_Comments_{permit_num}_{datestamp}.csv",
                     mime="text/csv",
@@ -753,15 +900,15 @@ def main():
                 )
 
         with col_e2:
-            xfdf_data = generate_bluebeam_xfdf()
-            if xfdf_data:
+            bax_data = generate_bluebeam_bax()
+            if bax_data:
                 st.download_button(
-                    label="📐 Extract Comments to Bluebeam",
-                    data=xfdf_data,
-                    file_name=f"Markups_{permit_num}_{datestamp}.xfdf",
-                    mime="application/vnd.adobe.xfdf",
+                    label="📐 Create Bluebeam Comments File",
+                    data=bax_data,
+                    file_name=f"Markups_{permit_num}_{datestamp}.bax",
+                    mime="application/octet-stream",
                     use_container_width=True,
-                    help="Import into Bluebeam via Markup → Import for styled text box annotations"
+                    help="Import into Bluebeam via Markup → Import (.bax format with full styling)"
                 )
     
     st.markdown('</div>', unsafe_allow_html=True)
