@@ -8,23 +8,28 @@ Purpose: Guide reviewers through plan review with interactive checklists
 
 Features:
 - Review type selection (Transitional, HP, Standard, Pool, Fence)
-- Interactive Yes/No/N/A checklist
+- Interactive Yes/No/N/A radio buttons per checklist item
 - Automatic comment suggestions when "No" is selected
 - Custom notes support
 - Word document export with full checklist and comments
+- LAMA CSV export for LAMA Comment Uploader chrome extension
+- Bluebeam XFDF export for direct markup import with styled text boxes
 
 Update Log:
 - 2026-02-02: Added explicit text colors and !important to all CSS classes
               to fix invisible text when browser is in dark mode.
 - 2026-02-02: Added custom sidebar navigation to replace default "app" label.
+- 2026-02-02: Added LAMA CSV and Bluebeam XFDF export buttons.
+- 2026-02-02: Changed status dropdowns to horizontal radio buttons for speed.
 ==============================================================================
 """
 
 import streamlit as st
 import sys
+import csv
 from pathlib import Path
 from datetime import datetime
-from io import BytesIO
+from io import BytesIO, StringIO
 
 # Add utils to path
 sys.path.append(str(Path(__file__).parent.parent / "utils"))
@@ -54,6 +59,7 @@ st.set_page_config(page_title="Wizard Mode", page_icon="📋", layout="wide")
 # =============================================================================
 # Every class with a light background explicitly sets color: #1a1a2e (dark navy)
 # with !important so Streamlit's dark theme cannot override text to white.
+# Radio button styling keeps items compact and inline.
 # =============================================================================
 st.markdown("""
 <style>
@@ -104,6 +110,10 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
     }
+    /* Compact radio buttons - reduce vertical padding */
+    div[data-testid="stRadio"] > div {
+        gap: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -143,6 +153,33 @@ def reset_checklist():
     st.session_state.wizard_checklist_state = {}
     st.session_state.wizard_selected_comments = {}
     st.session_state.wizard_custom_notes = {}
+
+
+def collect_all_comments():
+    """
+    Collect all comments from checklist items marked 'No'.
+    Returns a list of raw comment strings (no prefix codes).
+    Used by all export functions to ensure consistent output.
+    """
+    checklist = get_checklist_for_review_type(st.session_state.wizard_review_type)
+    all_comments = []
+
+    for section_id, section_data in checklist.items():
+        for item in section_data["items"]:
+            item_key = item["id"]
+            if st.session_state.wizard_checklist_state.get(item_key) == "No":
+                selected = st.session_state.wizard_selected_comments.get(item_key, [])
+                custom_note = st.session_state.wizard_custom_notes.get(item_key, "")
+
+                for comment_id in selected:
+                    comment_text = COMMENTS.get(comment_id, "")
+                    if comment_text:
+                        all_comments.append(comment_text)
+
+                if custom_note.strip():
+                    all_comments.append(custom_note.strip())
+
+    return all_comments
 
 
 def generate_word_document():
@@ -320,6 +357,146 @@ def generate_word_document():
     return buffer
 
 
+# =============================================================================
+# LAMA CSV EXPORT
+# =============================================================================
+# Generates a single-column CSV with header "Comments" that plugs directly
+# into the LAMA Comment Uploader chrome extension. The extension's panel.js
+# parser looks for a column header matching "comments" (case-insensitive)
+# and reads each row as a comment to post to LAMA.
+# =============================================================================
+
+def generate_lama_csv():
+    """
+    Generate CSV for the LAMA Comment Uploader chrome extension.
+    Format: Single column with header 'Comments', RFC 4180 quoting.
+    """
+    comments = collect_all_comments()
+    if not comments:
+        return None
+
+    buffer = StringIO()
+    writer = csv.writer(buffer, quoting=csv.QUOTE_ALL)
+    writer.writerow(["Comments"])
+    for comment in comments:
+        writer.writerow([comment])
+
+    return buffer.getvalue().encode('utf-8')
+
+
+# =============================================================================
+# BLUEBEAM XFDF EXPORT
+# =============================================================================
+# Generates an XFDF (XML Forms Data Format) file that Bluebeam Revu can
+# import via Markup -> Import. Each comment becomes a FreeText annotation
+# (text box) with the following styling to match Kevin's toolchest:
+#
+#   Border color:   #008000 (dark green)
+#   Fill color:     #008000 (dark green) at 25% opacity
+#   Border width:   0.75 pt, solid
+#   Font:           Helvetica 12pt, black, left-aligned, top-aligned
+#   Box size:       3.5" wide x 1.5" tall (252 x 108 points)
+#   Opacity:        100% border, 25% fill
+#
+# Annotations are stacked vertically on page 1 starting from the top.
+# The user can reposition them onto the correct plan sheets after import.
+#
+# Tested against: Bluebeam Revu x64 Complete v21.8 (Engine 21.8.0.13613)
+# =============================================================================
+
+def generate_bluebeam_xfdf():
+    """
+    Generate XFDF file for Bluebeam Revu markup import.
+    Creates styled FreeText annotations matching toolchest format.
+    """
+    comments = collect_all_comments()
+    if not comments:
+        return None
+
+    reviewer = st.session_state.wizard_reviewer or "Engineering"
+    now = datetime.now()
+
+    # PDF date format: D:YYYYMMDDHHmmSS
+    date_pdf = now.strftime("D:%Y%m%d%H%M%S")
+
+    # -------------------------------------------------------------------------
+    # Page and box dimensions (letter size: 8.5" x 11")
+    # All values in PDF points (1 inch = 72 points)
+    # PDF coordinate origin is bottom-left, Y increases upward
+    # -------------------------------------------------------------------------
+    page_height = 792   # 11 inches
+    margin = 36         # 0.5 inch margin from edges
+    box_width = 252     # 3.5 inches
+    box_height = 108    # 1.5 inches
+    gap = 10            # ~0.14 inch gap between stacked boxes
+
+    # Color: #008000 = RGB(0, 128, 0) = normalized (0, 0.50196, 0)
+    # XFDF uses comma-separated RGB values in 0-1 range
+    color_rgb = "0,0.50196,0"
+
+    # -------------------------------------------------------------------------
+    # Build XFDF document
+    # -------------------------------------------------------------------------
+    lines = []
+    lines.append('<?xml version="1.0" encoding="UTF-8"?>')
+    lines.append('<xfdf xmlns="http://ns.adobe.com/xfdf/" xml:space="preserve">')
+    lines.append('  <annots>')
+
+    # Start stacking from top of page, moving downward
+    current_y_top = page_height - margin  # Top edge of first box
+    x1 = margin                            # Left edge
+
+    for i, comment in enumerate(comments):
+        y2 = current_y_top                 # Top of box (PDF coords)
+        y1 = current_y_top - box_height    # Bottom of box
+
+        # If we've gone below the bottom margin, start a second column
+        if y1 < margin and x1 == margin:
+            x1 = margin + box_width + margin  # Shift to right column
+            current_y_top = page_height - margin
+            y2 = current_y_top
+            y1 = current_y_top - box_height
+
+        x2 = x1 + box_width
+
+        # Escape XML special characters in comment text
+        escaped = (comment
+                   .replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace('"', "&quot;")
+                   .replace("'", "&apos;"))
+
+        # Each FreeText annotation represents one styled comment text box
+        lines.append('    <freetext')
+        lines.append('      page="0"')
+        lines.append(f'      rect="{x1:.1f},{y1:.1f},{x2:.1f},{y2:.1f}"')
+        lines.append('      flags="print"')
+        lines.append('      subject="Engineering"')
+        lines.append(f'      title="{reviewer}"')
+        lines.append(f'      color="{color_rgb}"')
+        lines.append(f'      interior-color="{color_rgb}"')
+        lines.append('      width="0.75"')
+        lines.append('      opacity="1"')
+        lines.append(f'      creationdate="{date_pdf}"')
+        lines.append(f'      date="{date_pdf}"')
+        lines.append('      intent="FreeTextTypewriter">')
+        lines.append(f'      <contents>{escaped}</contents>')
+        # defaultappearance: "0 g" = black text color, "/Helv 12 Tf" = Helvetica 12pt
+        lines.append('      <defaultappearance>0 g /Helv 12 Tf</defaultappearance>')
+        # defaultstyle: CSS-like properties for Bluebeam rendering
+        lines.append('      <defaultstyle>font:Helvetica 12.0pt; text-align:left; text-valign:top; color:#000000; margin:0</defaultstyle>')
+        lines.append('    </freetext>')
+
+        # Move down for next box
+        current_y_top = y1 - gap
+
+    lines.append('  </annots>')
+    lines.append('</xfdf>')
+
+    return '\n'.join(lines).encode('utf-8')
+
+
 def main():
     """Main function for Wizard Mode"""
     initialize_session_state()
@@ -403,26 +580,31 @@ def main():
         for item in section_data["items"]:
             item_key = item["id"]
             
-            # Create columns for item layout
+            # Create columns: description on left, radio buttons on right
             col1, col2 = st.columns([3, 1])
             
             with col1:
                 st.markdown(f"**{item['id']}** - {item['description']}")
             
             with col2:
-                # Status dropdown
-                current_status = st.session_state.wizard_checklist_state.get(item_key, "")
-                status_options = ["", "Yes", "No", "N/A"]
+                # -------------------------------------------------------
+                # Horizontal radio buttons instead of dropdown
+                # Options: "—" (not yet reviewed), "Yes", "No", "N/A"
+                # The "—" option acts as a blank/unreviewed placeholder
+                # -------------------------------------------------------
+                current_status = st.session_state.wizard_checklist_state.get(item_key, "—")
                 
-                status = st.selectbox(
-                    "Status",
-                    options=status_options,
-                    index=status_options.index(current_status) if current_status in status_options else 0,
+                status = st.radio(
+                    f"Status for {item_key}",
+                    options=["—", "Yes", "No", "N/A"],
+                    index=["—", "Yes", "No", "N/A"].index(current_status) if current_status in ["—", "Yes", "No", "N/A"] else 0,
                     key=f"status_{item_key}",
+                    horizontal=True,
                     label_visibility="collapsed"
                 )
                 
-                if status:
+                # Update session state based on selection
+                if status and status != "—":
                     st.session_state.wizard_checklist_state[item_key] = status
                 elif item_key in st.session_state.wizard_checklist_state:
                     del st.session_state.wizard_checklist_state[item_key]
@@ -512,6 +694,9 @@ def main():
     elif no_count > 0:
         st.warning(f"⚠️ {no_count} issue(s) found that require comments.")
     
+    # -----------------------------------------------------------------
+    # Row 1: Word Document + Clear Review
+    # -----------------------------------------------------------------
     col1, col2 = st.columns(2)
     
     with col1:
@@ -542,6 +727,42 @@ def main():
             st.session_state.wizard_address = ""
             st.session_state.wizard_reviewer = None
             st.rerun()
+
+    # -----------------------------------------------------------------
+    # Row 2: LAMA CSV + Bluebeam XFDF
+    # Only shown when there are comments to export (no_count > 0)
+    # -----------------------------------------------------------------
+    if no_count > 0:
+        st.markdown("#### 📊 Extract Comments")
+
+        permit_num = st.session_state.wizard_permit_number or "review"
+        datestamp = datetime.now().strftime('%Y%m%d')
+
+        col_e1, col_e2 = st.columns(2)
+
+        with col_e1:
+            lama_data = generate_lama_csv()
+            if lama_data:
+                st.download_button(
+                    label="📥 Extract Comments to LAMA",
+                    data=lama_data,
+                    file_name=f"LAMA_Comments_{permit_num}_{datestamp}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    help="Single-column CSV for the LAMA Comment Uploader extension"
+                )
+
+        with col_e2:
+            xfdf_data = generate_bluebeam_xfdf()
+            if xfdf_data:
+                st.download_button(
+                    label="📐 Extract Comments to Bluebeam",
+                    data=xfdf_data,
+                    file_name=f"Markups_{permit_num}_{datestamp}.xfdf",
+                    mime="application/vnd.adobe.xfdf",
+                    use_container_width=True,
+                    help="Import into Bluebeam via Markup → Import for styled text box annotations"
+                )
     
     st.markdown('</div>', unsafe_allow_html=True)
     
