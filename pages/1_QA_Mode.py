@@ -6,6 +6,10 @@ File: pages/1_QA_Mode.py
 Purpose: Question answering with source citations and feedback popup
 
 FIXED: Answer now stays visible when clicking feedback buttons
+
+Update Log:
+- 2026-02-02: Added explicit text colors with !important for dark mode fix.
+- 2026-02-02: Added custom sidebar navigation to replace default "app" label.
 ==============================================================================
 """
 
@@ -25,6 +29,10 @@ st.set_page_config(page_title="Q&A Mode", page_icon="💬", layout="wide")
 # CSS styling for professional appearance
 st.markdown("""
 <style>
+    /* Hide default streamlit page navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
     .question-box {
         background: #f8f9fa !important;
         color: #1a1a2e !important;
@@ -51,22 +59,33 @@ st.markdown("""
         font-size: 0.9em;
     }
     .feedback-popup {
-        background: #fff5f5;
+        background: #fff5f5 !important;
+        color: #1a1a2e !important;
         border: 2px solid #fc8181;
         border-radius: 8px;
         padding: 1.5rem;
         margin: 1rem 0;
     }
     .success-message {
-        background: #d4edda;
+        background: #d4edda !important;
+        color: #155724 !important;
         border: 1px solid #c3e6cb;
         border-radius: 8px;
         padding: 1rem;
         margin: 1rem 0;
-        color: #155724;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Custom Sidebar Navigation (matches app.py)
+st.sidebar.title("🧭 Navigation")
+st.sidebar.markdown("---")
+st.sidebar.page_link("app.py", label="🏡 Dashboard", icon=None)
+st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode", icon=None)
+st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode", icon=None)
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Engineering AI Assistant**")
+st.sidebar.markdown("v1.0 | Brentwood, TN")
 
 
 def main():
