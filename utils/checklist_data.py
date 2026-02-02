@@ -55,7 +55,7 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "0.4",
-                "description": "ROW/PUDE damage repair note needed",
+                "description": "ROW/PUDE damage repair note provided",
                 "comment_ids": ["BB-0024"],
                 "applies_to": []  # All
             },
