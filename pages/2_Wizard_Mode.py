@@ -16,6 +16,7 @@ Features:
 Update Log:
 - 2026-02-02: Added explicit text colors and !important to all CSS classes
               to fix invisible text when browser is in dark mode.
+- 2026-02-02: Added custom sidebar navigation to replace default "app" label.
 ==============================================================================
 """
 
@@ -56,6 +57,10 @@ st.set_page_config(page_title="Wizard Mode", page_icon="📋", layout="wide")
 # =============================================================================
 st.markdown("""
 <style>
+    /* Hide default streamlit page navigation */
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
     .review-header {
         background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%) !important;
         color: white !important;
@@ -101,6 +106,16 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Custom Sidebar Navigation (matches app.py)
+st.sidebar.title("🧭 Navigation")
+st.sidebar.markdown("---")
+st.sidebar.page_link("app.py", label="🏡 Dashboard", icon=None)
+st.sidebar.page_link("pages/1_QA_Mode.py", label="💬 Q&A Mode", icon=None)
+st.sidebar.page_link("pages/2_Wizard_Mode.py", label="🧙‍♂️ Wizard Mode", icon=None)
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Engineering AI Assistant**")
+st.sidebar.markdown("v1.0 | Brentwood, TN")
 
 
 def initialize_session_state():
