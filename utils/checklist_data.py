@@ -9,6 +9,12 @@ Purpose: Contains all checklist items organized by section, with mappings
 Structure:
 - CHECKLISTS: Dict of review types, each containing sections with items
 - Each item has: description, applicable_to (review types), comment_ids
+
+Revision Notes (Feb 2, 2026):
+- 20 checklist item descriptions reworded to eliminate double negatives
+  and ambiguous requirement-vs-compliance language.
+- All items now follow the convention: "Yes" = the plan meets this requirement.
+- No changes to IDs, comment_ids, applies_to, or any logic.
 ==============================================================================
 """
 
@@ -49,7 +55,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "0.3",
-                "description": "Engineering review required (>800 sq ft additional impervious)",
+                # REVISED: Was "Engineering review required (>800 sq ft additional impervious)"
+                # Old wording ambiguous — "Yes" could mean "yes, review IS required" vs. "yes, confirmed"
+                "description": "Additional impervious exceeds 800 sq ft (engineering review applies)",
                 "comment_ids": ["BB-0018"],
                 "applies_to": []  # All
             },
@@ -328,7 +336,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "5.8",
-                "description": "Driveway not impacting drainage inlet",
+                # REVISED: Was "Driveway not impacting drainage inlet"
+                # "Yes, it's not impacting" is a double negative
+                "description": "Driveway clear of drainage inlet (3' min)",
                 "comment_ids": ["BB-0094"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
@@ -349,7 +359,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "6.2",
-                "description": "Walls 4'+ require PE-stamped design (per code sec. 78-14)",
+                # REVISED: Was "Walls 4'+ require PE-stamped design (per code sec. 78-14)"
+                # "require" ambiguous — now confirms the design is provided
+                "description": "PE-stamped design provided for walls 4'+ (per Sec. 78-14)",
                 "comment_ids": ["BB-0036", "BB-0041"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
@@ -361,19 +373,25 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "6.4",
-                "description": "Note that walls >4' must be inspected by licensed PE",
+                # REVISED: Was "Note that walls >4' must be inspected by licensed PE"
+                # "must be inspected" describes a requirement, not compliance
+                "description": "PE inspection note provided for walls >4'",
                 "comment_ids": ["BB-0041"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
                 "id": "6.5",
-                "description": "Guard rails/fencing required for grade change >30\" (attached to house)",
+                # REVISED: Was "Guard rails/fencing required for grade change >30\" (attached to house)"
+                # "required" ambiguous — now confirms they are provided
+                "description": "Guard rails/fencing provided for grade change >30\" (attached to house)",
                 "comment_ids": ["BB-0036", "BB-0102"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
             {
                 "id": "6.6",
-                "description": "Guard rails, fencing, or planted hedging for walls detached from house (>30\")",
+                # REVISED: Was "Guard rails, fencing, or planted hedging for walls detached from house (>30\")"
+                # Added "provided" to confirm compliance
+                "description": "Guard rails, fencing, or planted hedging provided for detached walls (>30\" grade change)",
                 "comment_ids": ["BB-0036", "BB-0102"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot", "Pool Permit"]
             },
@@ -400,7 +418,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "7.3",
-                "description": "Drive culverts and pipe outlets require headwalls/endwalls and proper armament",
+                # REVISED: Was "Drive culverts and pipe outlets require headwalls/endwalls and proper armament"
+                # "require" ambiguous — same pattern as 6.2, 6.4, 6.5
+                "description": "Headwalls/endwalls and proper armament provided for drive culverts and pipe outlets",
                 "comment_ids": ["BB-0033", "BB-0073"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
@@ -502,7 +522,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "9.4",
-                "description": "Note: 25 caliper inches of trees per acre required",
+                # REVISED: Was "Note: 25 caliper inches of trees per acre required"
+                # "required" describes the standard, not whether the note is on the plan
+                "description": "Tree density note provided (25 caliper inches per acre)",
                 "comment_ids": ["BB-0121"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot", "Standard Lot"]
             },
@@ -622,7 +644,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "13.3",
-                "description": "Driveway as-built survey note (for driveways over 15% slope)",
+                # REVISED: Was "Driveway as-built survey note (for driveways over 15% slope)"
+                # Added "provided" and used >= symbol for clarity
+                "description": "Driveway as-built survey note provided (if slope >=15%)",
                 "comment_ids": ["BB-0041"],
                 "applies_to": ["Transitional Lot", "Hillside Protection Lot"]
             },
@@ -667,7 +691,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "14.6",
-                "description": "Geotechnical inspection report required (HP lots)",
+                # REVISED: Was "Geotechnical inspection report required (HP lots)"
+                # "required" ambiguous — now confirms the report is provided
+                "description": "Geotechnical inspection report provided for review",
                 "comment_ids": ["BB-0022"],
                 "applies_to": ["Hillside Protection Lot"]
             },
@@ -688,19 +714,25 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "15.2",
-                "description": "Fence/gate/pool/spa approval note (Building & Codes required)",
+                # REVISED: Was "Fence/gate/pool/spa approval note (Building & Codes required)"
+                # "required" ambiguous — now confirms the note is provided
+                "description": "Building & Codes approval note provided for fence/gate/pool/spa",
                 "comment_ids": ["BB-0030"],
                 "applies_to": ["Pool Permit"]
             },
             {
                 "id": "15.3",
-                "description": "Pool fence location - not in PUDE or along property line issues",
+                # REVISED: Was "Pool fence location - not in PUDE or along property line issues"
+                # Double confusing: "not in" + "issues"
+                "description": "Pool fence clear of PUDE and property line conflicts",
                 "comment_ids": ["BB-0017", "BB-0122", "BB-0123"],
                 "applies_to": ["Pool Permit"]
             },
             {
                 "id": "15.4",
-                "description": "Pool fence location - not in sewer or other easement",
+                # REVISED: Was "Pool fence location - not in sewer or other easement"
+                # "Yes, it's not in an easement" is a double negative
+                "description": "Pool fence clear of sewer and other easements",
                 "comment_ids": ["BB-0122"],
                 "applies_to": ["Pool Permit"]
             },
@@ -724,7 +756,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "15.8",
-                "description": "Stormwater does not flow towards house",
+                # REVISED: Was "Stormwater does not flow towards house"
+                # "Yes, it does not flow toward house" is a double negative
+                "description": "Stormwater directed away from house",
                 "comment_ids": ["BB-0071"],
                 "applies_to": ["Pool Permit"]
             },
@@ -754,7 +788,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "15.13",
-                "description": "Pool deck elevation not higher than home elevations",
+                # REVISED: Was "Pool deck elevation not higher than home elevations"
+                # "Yes, it's not higher" is a double negative
+                "description": "Pool deck elevation at or below home elevations",
                 "comment_ids": ["BB-0016"],
                 "applies_to": ["Pool Permit"]
             },
@@ -775,19 +811,25 @@ CHECKLIST_SECTIONS = {
         "items": [
             {
                 "id": "16.1",
-                "description": "Fence not in public right-of-way (3' from sidewalk/bikeway)",
+                # REVISED: Was "Fence not in public right-of-way (3' from sidewalk/bikeway)"
+                # Classic double negative — Kevin's original example
+                "description": "Fence set back 3' min from sidewalk/bikeway (clear of ROW)",
                 "comment_ids": ["BB-0122"],
                 "applies_to": ["Fence Permit"]
             },
             {
                 "id": "16.2",
-                "description": "Fence not in recorded easement without authorization",
+                # REVISED: Was "Fence not in recorded easement without authorization"
+                # Triple confusion: "not" + "without"
+                "description": "Fence clear of recorded easements (or authorization obtained)",
                 "comment_ids": ["BB-0122", "BB-0017"],
                 "applies_to": ["Fence Permit"]
             },
             {
                 "id": "16.3",
-                "description": "Fence does not create sight distance issues",
+                # REVISED: Was "Fence does not create sight distance issues"
+                # "Yes, it does not create issues" is a double negative
+                "description": "Sight distance verified at intersections and driveways",
                 "comment_ids": ["BB-0122"],
                 "applies_to": ["Fence Permit"]
             },
@@ -799,7 +841,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "16.5",
-                "description": "No trees planted in easements",
+                # REVISED: Was "No trees planted in easements"
+                # "Yes, there are no trees" is unintuitive
+                "description": "Easements clear of proposed tree plantings",
                 "comment_ids": ["BB-0113"],
                 "applies_to": ["Fence Permit"]
             },
@@ -811,7 +855,9 @@ CHECKLIST_SECTIONS = {
             },
             {
                 "id": "16.7",
-                "description": "Fence does not encompass drainage swale",
+                # REVISED: Was "Fence does not encompass drainage swale"
+                # "Yes, it does not encompass" is a double negative
+                "description": "Drainage swale remains outside fence line",
                 "comment_ids": ["BB-0123"],
                 "applies_to": ["Fence Permit"]
             },
