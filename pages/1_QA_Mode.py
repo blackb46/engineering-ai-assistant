@@ -26,22 +26,24 @@ st.set_page_config(page_title="Q&A Mode", page_icon="💬", layout="wide")
 st.markdown("""
 <style>
     .question-box {
-        background: #f8f9fa;
+        background: #f8f9fa !important;
+        color: #1a1a2e !important;
         border: 1px solid #dee2e6;
         border-radius: 8px;
         padding: 1rem;
         margin: 1rem 0;
     }
     .answer-box {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        border: 1px solid #90caf9;
+        background: #e7f3ff !important;
+        color: #1a1a2e !important;
+        border: 1px solid #bee5eb;
         border-radius: 8px;
-        padding: 1.5rem;
+        padding: 1rem;
         margin: 1rem 0;
-        font-size: 1.1em;
     }
     .source-box {
-        background: #fff3cd;
+        background: #fff3cd !important;
+        color: #1a1a2e !important;
         border: 1px solid #ffeaa7;
         border-radius: 8px;
         padding: 0.5rem;
